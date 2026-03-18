@@ -78,8 +78,10 @@ flash_attn=2.8.3
 ├── scripts/
 │   ├── generate_niah_data.py      # Synthetic NIAH data generator
 │   ├── run_training.sh            # Multi-GPU training launcher
-│   └── evaluate_niah.py           # vLLM-based evaluation (base vs. LoRA)
+│   ├── evaluate_niah.py           # vLLM-based NIAH evaluation (base vs. LoRA)
+│   └── evaluate_helmet_rag.py     # vLLM-based HELMET RAG evaluation
 ├── data/                          # Generated training data (gitignored)
+│   └── data/kilt/                 # HELMET KILT RAG data (downloaded separately)
 └── outputs/                       # Model checkpoints & eval results (gitignored)
 ```
 
@@ -151,6 +153,57 @@ Metric                     Base       LoRA      Delta
 exact_match              10.0%     98.0%    +88.0%
 substring_match          86.0%     98.0%    +12.0%
 ```
+
+## HELMET RAG Evaluation
+
+Evaluate models on the four KILT-based RAG benchmarks from [HELMET](https://github.com/princeton-nlp/HELMET): Natural Questions, TriviaQA, HotpotQA, and PopQA. Uses HELMET's data and replicates their prompt format and metrics without depending on their codebase.
+
+### 1. Download HELMET data
+
+```bash
+wget -c https://huggingface.co/datasets/princeton-nlp/HELMET/resolve/main/data.tar.gz -O data/helmet_data.tar.gz
+cd data && tar xzf helmet_data.tar.gz 'data/kilt/'
+```
+
+This extracts ~22GB of KILT RAG data with varying document counts (20, 50, 105, 220, 440, 500, 1000 docs per question).
+
+### 2. Run evaluation
+
+```bash
+conda activate corpus-reasoning-eval
+python scripts/evaluate_helmet_rag.py \
+    --base-model NousResearch/Llama-3.2-1B \
+    --datasets nq,triviaqa,hotpotqa,popqa \
+    --max-test-samples 100 \
+    --num-docs 20 \
+    --max-model-len 4096 \
+    --shots 2
+```
+
+Options:
+- `--datasets nq,triviaqa,hotpotqa,popqa` — comma-separated list of benchmarks
+- `--num-docs 20` — number of retrieved documents per question (available: 20, 50, 105, 220, 440, 500, 1000)
+- `--max-test-samples 100` — cap on evaluation examples per dataset
+- `--shots 2` — number of few-shot demos
+- `--max-model-len 4096` — model context window (increase for more docs)
+- `--lora-path outputs/niah-lora` — optional LoRA adapter to evaluate
+- `--output-file outputs/helmet_rag_results.json` — where to save results
+
+### 3. Metrics
+
+Follows HELMET's evaluation protocol:
+- **Exact Match (EM)** — normalized prediction matches a gold answer exactly
+- **Substring Exact Match** — a gold answer appears as a substring of the prediction
+- **F1** — token-level F1 between prediction and best-matching gold answer
+
+Baseline results (Llama-3.2-1B, 20 docs, 50 samples):
+
+| Dataset | EM | Substring EM | F1 |
+|---|---|---|---|
+| NQ | 30.0% | 32.0% | 38.8% |
+| TriviaQA | 48.0% | 48.0% | 53.8% |
+| HotpotQA | 38.0% | 40.0% | 52.4% |
+| PopQA | 42.0% | 46.0% | 48.9% |
 
 ## Training Configuration
 

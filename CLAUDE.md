@@ -37,6 +37,10 @@ python scripts/evaluate_niah.py
 - Dataset format: JSONL with alpaca-style fields (`instruction`, `input`, `output`)
 - Local data paths in axolotl configs must point to actual file paths (not HF repo IDs) for local datasets
 
+## User Preferences
+
+- **Always log progress for long-running processes.** When running downloads, extractions, training, or any task that takes more than ~30 seconds, ensure there is a way for the user to monitor progress (e.g., `--progress`, `pv`, `tqdm`, writing to a log file with `tee`, or periodic status lines). Provide the user a `tail -f` command or similar to watch the output. Avoid approaches that flood Claude's context with huge outputs — prefer writing to a file the user can `tail`.
+
 ## Known Issues
 
 - Axolotl 0.15.0 is missing `telemetry/whitelist.yaml` in its package — must be manually created (see README)
