@@ -167,6 +167,19 @@ cd data && tar xzf helmet_data.tar.gz 'data/kilt/'
 
 This extracts ~22GB of KILT RAG data with varying document counts (20, 50, 105, 220, 440, 500, 1000 docs per question).
 
+### Context length statistics
+
+Average context tokens per question (Llama-3 tokenizer, measured over 50 samples):
+
+| Docs | NQ | TriviaQA | HotpotQA | PopQA |
+|---:|---:|---:|---:|---:|
+| 20 | 2,304 | 2,453 | 2,356 | 2,087 |
+| 50 | 5,820 | 6,167 | 5,820 | 5,365 |
+| 105 | 12,346 | 12,913 | 12,294 | 11,705 |
+| 220 | 25,950 | 26,963 | 25,995 | 24,838 |
+| 440 | 52,094 | 53,950 | 52,328 | 50,129 |
+| 1000 | 118,467 | 122,502 | 119,703 | 115,674 |
+
 ### 2. Run evaluation
 
 ```bash
@@ -196,14 +209,15 @@ Follows HELMET's evaluation protocol:
 - **Substring Exact Match** — a gold answer appears as a substring of the prediction
 - **F1** — token-level F1 between prediction and best-matching gold answer
 
-Baseline results (Llama-3.2-1B, 20 docs, 50 samples):
+Baseline results (Llama-3.2-1B, 2-shot):
 
-| Dataset | EM | Substring EM | F1 |
-|---|---|---|---|
-| NQ | 30.0% | 32.0% | 38.8% |
-| TriviaQA | 48.0% | 48.0% | 53.8% |
-| HotpotQA | 38.0% | 40.0% | 52.4% |
-| PopQA | 42.0% | 46.0% | 48.9% |
+| Dataset | Docs | ~Context Tokens | EM | Substring EM | F1 |
+|---|---:|---:|---|---|---|
+| NQ | 20 | 2.3k | 30.0% | 32.0% | 38.8% |
+| NQ | 220 | 26k | 28.0% | 31.0% | 35.5% |
+| TriviaQA | 20 | 2.5k | 48.0% | 48.0% | 53.8% |
+| HotpotQA | 20 | 2.4k | 38.0% | 40.0% | 52.4% |
+| PopQA | 20 | 2.1k | 42.0% | 46.0% | 48.9% |
 
 ## Training Configuration
 
