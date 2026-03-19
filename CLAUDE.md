@@ -18,6 +18,7 @@ This repository implements a long-context training and evaluation pipeline for l
 - `scripts/` — Data generation, training launcher, evaluation
 - `data/` — Generated datasets (gitignored)
 - `outputs/` — Checkpoints and eval results (gitignored)
+- `results/` — Experiment results and reproduction instructions (markdown, checked in)
 
 ## Common Commands
 
@@ -36,6 +37,7 @@ python scripts/evaluate_niah.py
 - Data generation scripts go in `scripts/` and write to `data/`
 - Dataset format: JSONL with alpaca-style fields (`instruction`, `input`, `output`)
 - Local data paths in axolotl configs must point to actual file paths (not HF repo IDs) for local datasets
+- **Experiment tracking**: All experiment results and reproduction instructions go in `results/` as markdown files (one per task). Each file should include: task description, dataset details, config parameters, exact commands to reproduce, and results tables. Update these files whenever a new experiment is run.
 
 ## User Preferences
 
