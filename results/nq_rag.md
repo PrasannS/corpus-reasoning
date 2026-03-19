@@ -83,3 +83,55 @@ accelerate launch --num_processes 4 -m axolotl.cli.train configs/nq_rag_lora_mul
 **Training stats**: 312 steps, ~25 min, loss ~0.35-0.54 at midpoint
 
 **Results**: Pending evaluation
+
+## Experiment 3: Chunked Document Attention, 2.5k examples, 1 epoch, lr=5e-4
+
+Documents attend only within themselves (block-diagonal attention), while query/answer tokens attend to everything. Uses custom HF Trainer with SDPA for 4D attention masks.
+
+**Config**: `configs/nq_rag_chunked_lora.yml`
+
+| Parameter | Value |
+|---|---|
+| Train examples | 2,500 |
+| Num docs | 20 |
+| Gold position | random |
+| Epochs | 1 |
+| Learning rate | 5e-4 |
+| Sequence length | 8192 |
+| Batch size | 1 x 8 grad_accum x 4 GPUs |
+| Attention | Chunked (SDPA, block-diagonal for docs) |
+
+**Train**:
+```bash
+conda activate corpus-reasoning
+export CUDA_HOME=/usr/local/cuda-12.8
+accelerate launch --num_processes 4 scripts/train_chunked.py configs/nq_rag_chunked_lora.yml
+```
+
+**Evaluate**:
+```bash
+conda activate corpus-reasoning-eval
+# Base model (chunked attention, no LoRA)
+python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --output-file outputs/chunked_eval_nq_k20_base.json
+# LoRA fine-tuned (chunked attention)
+python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --lora-path outputs/nq-rag-chunked-lora --output-file outputs/chunked_eval_nq_k20_lora.json
+```
+
+**Training stats**: 79 steps, ~12 min, final loss 0.075, avg loss 0.725
+
+**Results** (NQ, 20 docs, 100 eval samples, 2-shot, chunked attention):
+
+| Model | EM | Substring EM | F1 |
+|---|---|---|---|
+| Base (chunked attn) | 3.0% | 13.0% | 11.7% |
+| LoRA (chunked attn, 2.5k ex) | 32.0% | 37.0% | 43.1% |
+| **Delta** | **+29.0%** | **+24.0%** | **+31.4%** |
+
+**Comparison with standard (full) attention** (Experiment 1):
+
+| Model | EM | Substring EM | F1 |
+|---|---|---|---|
+| Standard attn LoRA (1k ex) | 32.0% | 34.0% | 44.1% |
+| Chunked attn LoRA (2.5k ex) | 32.0% | 37.0% | 43.1% |
+
+Chunked attention performs comparably to standard full attention despite documents being isolated during prefill.

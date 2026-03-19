@@ -39,7 +39,6 @@ def load_model(args):
         args.base_model,
         attn_implementation="sdpa",
         torch_dtype=torch.bfloat16,
-        device_map="auto",
     )
     model.resize_token_embeddings(len(tokenizer))
 
@@ -49,7 +48,7 @@ def load_model(args):
         model = model.merge_and_unload()
         print(f"Loaded LoRA from {args.lora_path}")
 
-    model.eval()
+    model = model.cuda().eval()
     return model, tokenizer, doc_start_id, doc_end_id
 
 

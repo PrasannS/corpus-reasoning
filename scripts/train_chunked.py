@@ -19,9 +19,12 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     Trainer,
+    TrainerCallback,
     TrainingArguments,
 )
 from peft import LoraConfig, get_peft_model
+
+import json as _json
 
 sys.path.insert(0, str(Path(__file__).parent))
 from lib.io import load_jsonl
@@ -84,7 +87,8 @@ class ChunkedDataset(Dataset):
 class ChunkedCollator:
     """Collator that builds per-example 4D chunked attention masks.
 
-    Assumes batch_size=1 (required for custom per-example masks).
+    Supports batch_size > 1 by padding input_ids/labels to max length
+    and building separate masks per example, then stacking.
     """
 
     def __init__(self, doc_start_id, doc_end_id, pad_token_id):
@@ -93,21 +97,55 @@ class ChunkedCollator:
         self.pad_token_id = pad_token_id
 
     def __call__(self, features):
-        # batch_size=1: just unsqueeze
-        f = features[0]
-        input_ids = f["input_ids"].unsqueeze(0)
-        labels = f["labels"].unsqueeze(0)
+        max_len = max(f["input_ids"].size(0) for f in features)
 
-        # Build chunked attention mask on-the-fly
-        attn_mask = build_chunked_causal_mask(
-            f["input_ids"], self.doc_start_id, self.doc_end_id,
-        ).to(input_ids.device)
+        batch_ids, batch_labels, batch_masks = [], [], []
+        for f in features:
+            ids = f["input_ids"]
+            labs = f["labels"]
+            pad_len = max_len - ids.size(0)
+
+            # Right-pad input_ids and labels
+            if pad_len > 0:
+                ids = torch.cat([ids, torch.full((pad_len,), self.pad_token_id, dtype=ids.dtype)])
+                labs = torch.cat([labs, torch.full((pad_len,), -100, dtype=labs.dtype)])
+
+            # Build chunked mask for this example, then pad to max_len
+            mask = build_chunked_causal_mask(
+                f["input_ids"], self.doc_start_id, self.doc_end_id,
+            )  # (1, 1, orig_len, orig_len)
+
+            if pad_len > 0:
+                # Pad mask: padded positions should not be attended to
+                min_val = torch.finfo(mask.dtype).min
+                orig_len = f["input_ids"].size(0)
+                full_mask = torch.full((1, 1, max_len, max_len), min_val, dtype=mask.dtype)
+                full_mask[:, :, :orig_len, :orig_len] = mask
+                mask = full_mask
+
+            batch_ids.append(ids)
+            batch_labels.append(labs)
+            batch_masks.append(mask.squeeze(0))  # (1, max_len, max_len)
 
         return {
-            "input_ids": input_ids,
-            "labels": labels,
-            "attention_mask": attn_mask,
+            "input_ids": torch.stack(batch_ids),
+            "labels": torch.stack(batch_labels),
+            "attention_mask": torch.stack(batch_masks),  # (batch, 1, max_len, max_len)
         }
+
+
+class LogFileCallback(TrainerCallback):
+    """Write training logs to a JSONL file for easy monitoring via tail -f."""
+
+    def __init__(self, log_path):
+        self.log_path = Path(log_path)
+        self.log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if logs and state.is_world_process_zero:
+            entry = {"step": state.global_step, "epoch": round(state.epoch or 0, 4), **logs}
+            with open(self.log_path, "a") as f:
+                f.write(_json.dumps(entry) + "\n")
 
 
 def load_config(path):
@@ -167,48 +205,65 @@ def main():
 
     collator = ChunkedCollator(doc_start_id, doc_end_id, tokenizer.pad_token_id)
 
-    # Compute total steps for save strategy
+    # Compute total steps for save strategy (account for DDP world size)
+    world_size = max(torch.cuda.device_count(), 1)
     total_steps = len(dataset) // (
-        cfg.get("micro_batch_size", 1) * cfg.get("gradient_accumulation_steps", 8)
+        cfg.get("micro_batch_size", 1) * cfg.get("gradient_accumulation_steps", 8) * world_size
     )
     saves = cfg.get("saves_per_epoch", 1)
     save_steps = max(total_steps // saves, 1) if saves > 0 else total_steps
 
-    # Training arguments
+    # Build informative run name from config params
     output_dir = cfg.get("output_dir", "./outputs/chunked-lora")
+    data_stem = Path(data_path).stem  # e.g. nq_train_k20_random
+    lr = float(cfg.get("learning_rate", 5e-4))
+    epochs = cfg.get("num_epochs", 1)
+    grad_acc = cfg.get("gradient_accumulation_steps", 8)
+    lora_r = cfg.get("lora_r", 16)
+    seq_len = cfg.get("sequence_len", 8192)
+    run_name = (
+        cfg.get("wandb_name")
+        or f"chunked_{data_stem}_lr{lr}_ep{epochs}_r{lora_r}_seq{seq_len}_ga{grad_acc}"
+    )
+
+    # Training arguments
     training_args = TrainingArguments(
         output_dir=output_dir,
-        per_device_train_batch_size=1,  # must be 1 for custom masks
-        gradient_accumulation_steps=cfg.get("gradient_accumulation_steps", 8),
-        num_train_epochs=cfg.get("num_epochs", 1),
-        learning_rate=cfg.get("learning_rate", 5e-4),
+        per_device_train_batch_size=cfg.get("micro_batch_size", 1),
+        gradient_accumulation_steps=grad_acc,
+        num_train_epochs=epochs,
+        learning_rate=lr,
         lr_scheduler_type=cfg.get("lr_scheduler", "cosine"),
-        warmup_ratio=cfg.get("warmup_ratio", 0.1),
-        weight_decay=cfg.get("weight_decay", 0.0),
+        warmup_ratio=float(cfg.get("warmup_ratio", 0.1)),
+        weight_decay=float(cfg.get("weight_decay", 0.0)),
         bf16=True,
         logging_steps=cfg.get("logging_steps", 1),
+        logging_dir=f"{output_dir}/logs",
         save_steps=save_steps,
         save_total_limit=2,
         remove_unused_columns=False,
         dataloader_pin_memory=False,
         deepspeed=cfg.get("deepspeed"),
-        report_to="wandb" if cfg.get("wandb_project") else "none",
-        run_name=cfg.get("wandb_name", "chunked-train"),
+        report_to=["wandb", "tensorboard"] if cfg.get("wandb_project") else ["tensorboard"],
+        run_name=run_name,
     )
 
+    # wandb is initialized by HF Trainer via report_to; set env vars for project/name
     if cfg.get("wandb_project"):
-        import wandb
-        wandb.init(project=cfg["wandb_project"], name=cfg.get("wandb_name"))
+        import os
+        os.environ["WANDB_PROJECT"] = cfg["wandb_project"]
 
+    log_file = f"{output_dir}/train_log.jsonl"
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=dataset,
         data_collator=collator,
+        callbacks=[LogFileCallback(log_file)],
     )
 
-    print(f"\nStarting training. Monitor with:")
-    print(f"  tail -f {output_dir}/trainer_log.jsonl")
+    print(f"\nStarting training: {run_name}")
+    print(f"  Monitor: tail -f {log_file}")
     print(f"  Total examples: {len(dataset)}, steps/epoch: {total_steps}")
 
     trainer.train()

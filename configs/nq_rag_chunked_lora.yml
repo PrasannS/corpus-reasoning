@@ -1,7 +1,7 @@
 base_model: NousResearch/Llama-3.2-1B
 
 datasets:
-  - path: data/nq_train_k20_random.jsonl
+  - path: data/nq_train_k20_random_2500.jsonl
     type: alpaca
     ds_type: json
 
@@ -12,15 +12,15 @@ output_dir: ./outputs/nq-rag-chunked-lora
 wandb_project: corpus-reasoning
 wandb_run_id:
 wandb_watch:
-wandb_name: nq-rag-chunked-k20
+wandb_name:  # auto-generated from config params if empty
 wandb_log_model:
 
-# Task-specific — chunked attention requires batch_size=1, no packing, no flash attn
+# Task-specific — chunked attention: no packing, no flash attn (SDPA for custom 4D masks)
 sequence_len: 8192
 micro_batch_size: 1
 gradient_accumulation_steps: 8
 num_epochs: 1
-learning_rate: 5e-4
+learning_rate: 0.0005
 sample_packing: false
 eval_sample_packing: false
 flash_attention: false
@@ -41,6 +41,6 @@ saves_per_epoch: 1
 evals_per_epoch: 0
 warmup_ratio: 0.1
 weight_decay: 0.0
-deepspeed: configs/deepspeed_zero1.json
+# deepspeed: configs/deepspeed_zero1.json  # not needed for 1B model; DDP suffices
 special_tokens:
   pad_token: "<|end_of_text|>"
