@@ -6,19 +6,7 @@ from pathlib import Path
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 
-
-ALPACA_TEMPLATE = (
-    "Below is an instruction that describes a task, paired with an input "
-    "that provides further context. Write a response that appropriately "
-    "completes the request.\n\n"
-    "### Instruction:\n{instruction}\n\n"
-    "### Input:\n{input}\n\n"
-    "### Response:\n"
-)
-
-
-def format_alpaca_prompt(instruction: str, input_text: str) -> str:
-    return ALPACA_TEMPLATE.format(instruction=instruction, input=input_text)
+from lib.io import ALPACA_TEMPLATE, format_alpaca_prompt  # noqa: F401 — re-exported
 
 
 def add_vllm_args(parser: argparse.ArgumentParser) -> None:
