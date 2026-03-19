@@ -1,16 +1,15 @@
-"""
-Generate synthetic Needle-in-a-Haystack (NIAH) training data.
+"""Generate synthetic Needle-in-a-Haystack (NIAH) training data.
 
-Creates examples where a special "needle" fact is hidden among filler text,
-and the model must retrieve the needle when prompted.
+A factual "needle" is hidden among filler paragraphs; the model must retrieve it.
+
+Usage:
+    python scripts/generate_niah_data.py --num-train 500 --num-val 50
 """
 
-import json
-import random
 import argparse
-from pathlib import Path
+import random
+from lib.io import save_jsonl
 
-# Filler paragraph templates (the "haystack")
 FILLER_PARAGRAPHS = [
     "The history of agriculture dates back thousands of years. Early humans transitioned from hunter-gatherer societies to settled farming communities around 10,000 BCE. This shift, known as the Neolithic Revolution, fundamentally changed human civilization. Crops like wheat, barley, and rice were among the first to be domesticated.",
     "Ocean currents play a crucial role in regulating Earth's climate. The Gulf Stream, for example, carries warm water from the Gulf of Mexico across the Atlantic, moderating temperatures in Western Europe. Without these currents, many coastal regions would experience much more extreme weather patterns.",
@@ -30,7 +29,6 @@ FILLER_PARAGRAPHS = [
     "Migration patterns in birds are among the most remarkable phenomena in the animal kingdom. Arctic terns travel from pole to pole each year, covering roughly 44,000 miles. These journeys are guided by a combination of the Earth's magnetic field, star positions, and memorized landmarks.",
 ]
 
-# Needle templates: (needle_fact, question, answer)
 NEEDLE_TEMPLATES = [
     ("The secret password for Project Aurora is 'crystal-phoenix-42'.",
      "What is the secret password for Project Aurora?",
@@ -64,38 +62,17 @@ NEEDLE_TEMPLATES = [
      "Professor Tanaka's final theorem states that prime numbers above 10^18 follow a spiral distribution pattern."),
 ]
 
+INSTRUCTION = "Read the following passage carefully and answer the question based on the information provided."
 
-def generate_example(
-    num_filler_paragraphs: int = 10,
-    needle_position: str = "random",
-) -> dict:
-    """Generate a single NIAH example.
 
-    Args:
-        num_filler_paragraphs: Number of filler paragraphs in the haystack.
-        needle_position: Where to place the needle ("random", "beginning", "middle", "end").
-
-    Returns:
-        Dict with 'instruction', 'input', and 'output' fields (alpaca format).
-    """
-    needle_fact, question, answer = random.choice(NEEDLE_TEMPLATES)
-    fillers = random.sample(FILLER_PARAGRAPHS, min(num_filler_paragraphs, len(FILLER_PARAGRAPHS)))
-
-    # Determine needle insertion position
-    if needle_position == "beginning":
-        pos = 0
-    elif needle_position == "end":
-        pos = len(fillers)
-    elif needle_position == "middle":
-        pos = len(fillers) // 2
-    else:  # random
-        pos = random.randint(0, len(fillers))
-
+def generate_example(num_paragraphs: int, rng: random.Random) -> dict:
+    needle_fact, question, answer = rng.choice(NEEDLE_TEMPLATES)
+    fillers = rng.sample(FILLER_PARAGRAPHS, min(num_paragraphs, len(FILLER_PARAGRAPHS)))
+    pos = rng.randint(0, len(fillers))
     fillers.insert(pos, needle_fact)
     context = "\n\n".join(fillers)
-
     return {
-        "instruction": "Read the following passage carefully and answer the question based on the information provided.",
+        "instruction": INSTRUCTION,
         "input": f"Passage:\n{context}\n\nQuestion: {question}",
         "output": answer,
     }
@@ -103,30 +80,23 @@ def generate_example(
 
 def main():
     parser = argparse.ArgumentParser(description="Generate NIAH training data")
-    parser.add_argument("--num-train", type=int, default=500, help="Number of training examples")
-    parser.add_argument("--num-val", type=int, default=50, help="Number of validation examples")
-    parser.add_argument("--min-paragraphs", type=int, default=5, help="Min filler paragraphs")
-    parser.add_argument("--max-paragraphs", type=int, default=15, help="Max filler paragraphs")
-    parser.add_argument("--output-dir", type=str, default="data", help="Output directory")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--num-train", type=int, default=500)
+    parser.add_argument("--num-val", type=int, default=50)
+    parser.add_argument("--min-paragraphs", type=int, default=5)
+    parser.add_argument("--max-paragraphs", type=int, default=15)
+    parser.add_argument("--output-dir", type=str, default="data")
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    random.seed(args.seed)
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
+    rng = random.Random(args.seed)
     for split, count in [("train", args.num_train), ("val", args.num_val)]:
-        examples = []
-        for _ in range(count):
-            n_paragraphs = random.randint(args.min_paragraphs, args.max_paragraphs)
-            example = generate_example(num_filler_paragraphs=n_paragraphs)
-            examples.append(example)
-
-        out_path = output_dir / f"niah_{split}.jsonl"
-        with open(out_path, "w") as f:
-            for ex in examples:
-                f.write(json.dumps(ex) + "\n")
-        print(f"Wrote {count} examples to {out_path}")
+        examples = [
+            generate_example(rng.randint(args.min_paragraphs, args.max_paragraphs), rng)
+            for _ in range(count)
+        ]
+        path = f"{args.output_dir}/niah_{split}.jsonl"
+        save_jsonl(path, examples)
+        print(f"Wrote {count} examples to {path}")
 
 
 if __name__ == "__main__":

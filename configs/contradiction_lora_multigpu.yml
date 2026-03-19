@@ -7,7 +7,6 @@ datasets:
 
 val_set_size: 0.0
 dataset_prepared_path: data/prepared_contradiction_n100_k3
-
 output_dir: ./outputs/contradiction-lora
 
 wandb_project: corpus-reasoning
@@ -16,45 +15,32 @@ wandb_watch:
 wandb_name: contradiction-n100-k3
 wandb_log_model:
 
+# Task-specific
+sequence_len: 8192
+micro_batch_size: 1
+gradient_accumulation_steps: 8
+num_epochs: 1
+learning_rate: 5e-4
+
+# Common LoRA + training settings
 adapter: lora
 lora_r: 16
 lora_alpha: 32
 lora_dropout: 0.05
-lora_target_modules:
-  - gate_proj
-  - down_proj
-  - up_proj
-  - q_proj
-  - v_proj
-  - k_proj
-  - o_proj
-
-sequence_len: 8192
+lora_target_modules: [gate_proj, down_proj, up_proj, q_proj, v_proj, k_proj, o_proj]
 sample_packing: true
 eval_sample_packing: true
-
-micro_batch_size: 1
-gradient_accumulation_steps: 8
-num_epochs: 1
-
 optimizer: adamw_8bit
 lr_scheduler: cosine
-learning_rate: 5e-4
-
 bf16: auto
 tf32: false
-
 gradient_checkpointing: true
 flash_attention: true
-
 logging_steps: 1
 saves_per_epoch: 1
 evals_per_epoch: 0
-
 warmup_ratio: 0.1
 weight_decay: 0.0
-
 deepspeed: configs/deepspeed_zero1.json
-
 special_tokens:
   pad_token: "<|end_of_text|>"

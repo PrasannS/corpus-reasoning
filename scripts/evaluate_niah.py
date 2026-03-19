@@ -1,205 +1,67 @@
-"""
-Evaluate a trained NIAH model using vLLM for fast inference.
+"""Evaluate NIAH model using vLLM. Compares base vs. LoRA on needle retrieval.
 
-Compares the base model vs. the LoRA-finetuned model on needle retrieval.
-Uses substring matching and exact match metrics.
+Usage:
+    python scripts/evaluate_niah.py
+    python scripts/evaluate_niah.py --lora-path outputs/niah-lora --eval-data data/niah_val.jsonl
 """
 
-import json
 import argparse
-import os
-from pathlib import Path
-
-from vllm import LLM, SamplingParams
-from vllm.lora.request import LoRARequest
+from vllm import SamplingParams
+from lib.io import load_jsonl, save_results
+from lib.vllm_utils import add_vllm_args, load_model, run_inference, format_alpaca_prompt
 
 
-def load_eval_data(path: str) -> list[dict]:
-    """Load evaluation examples from JSONL."""
-    examples = []
-    with open(path) as f:
-        for line in f:
-            examples.append(json.loads(line))
-    return examples
-
-
-def format_prompt(example: dict) -> str:
-    """Format an example into the prompt the model was trained on (alpaca style)."""
-    instruction = example["instruction"]
-    inp = example["input"]
-    return (
-        f"Below is an instruction that describes a task, paired with an input that provides further context. "
-        f"Write a response that appropriately completes the request.\n\n"
-        f"### Instruction:\n{instruction}\n\n"
-        f"### Input:\n{inp}\n\n"
-        f"### Response:\n"
-    )
-
-
-def evaluate_responses(
-    examples: list[dict], responses: list[str]
-) -> dict:
-    """Compute evaluation metrics.
-
-    Returns:
-        Dict with exact_match, substring_match, and per-example details.
-    """
+def evaluate(examples, responses):
     results = []
-    exact_match = 0
-    substring_match = 0
-
-    for example, response in zip(examples, responses):
-        gold = example["output"].strip()
-        pred = response.strip()
-
-        # Exact match (case-insensitive, strip whitespace)
-        is_exact = pred.lower() == gold.lower()
-
-        # Substring match: check if the key factual content is in the response.
-        # Extract the core "needle" content from the gold answer.
-        is_substring = gold.lower() in pred.lower()
-
-        if is_exact:
-            exact_match += 1
-        if is_substring:
-            substring_match += 1
-
+    for ex, resp in zip(examples, responses):
+        gold, pred = ex["output"].strip(), resp.strip()
         results.append({
-            "question": example["input"].split("Question: ")[-1],
-            "gold": gold,
-            "predicted": pred[:200],  # truncate for display
-            "exact_match": is_exact,
-            "substring_match": is_substring,
+            "question": ex["input"].split("Question: ")[-1][:100],
+            "gold": gold, "predicted": pred[:200],
+            "exact_match": float(pred.lower() == gold.lower()),
+            "substring_match": float(gold.lower() in pred.lower()),
         })
-
-    n = len(examples)
+    n = len(results)
     return {
-        "num_examples": n,
-        "exact_match": exact_match / n if n else 0,
-        "substring_match": substring_match / n if n else 0,
+        "exact_match": sum(r["exact_match"] for r in results) / n,
+        "substring_match": sum(r["substring_match"] for r in results) / n,
         "details": results,
     }
 
 
-def run_eval(
-    llm: LLM,
-    examples: list[dict],
-    sampling_params: SamplingParams,
-    lora_request: LoRARequest | None = None,
-) -> list[str]:
-    """Run inference on all examples."""
-    prompts = [format_prompt(ex) for ex in examples]
-    outputs = llm.generate(prompts, sampling_params, lora_request=lora_request)
-    return [o.outputs[0].text for o in outputs]
-
-
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate NIAH model with vLLM")
-    parser.add_argument(
-        "--base-model",
-        type=str,
-        default="NousResearch/Llama-3.2-1B",
-        help="Base model name or path",
-    )
-    parser.add_argument(
-        "--lora-path",
-        type=str,
-        default="outputs/niah-lora",
-        help="Path to LoRA adapter (set to empty string to skip)",
-    )
-    parser.add_argument(
-        "--eval-data",
-        type=str,
-        default="data/niah_val.jsonl",
-        help="Path to evaluation JSONL",
-    )
-    parser.add_argument(
-        "--max-tokens",
-        type=int,
-        default=128,
-        help="Max new tokens to generate",
-    )
-    parser.add_argument(
-        "--output-file",
-        type=str,
-        default="outputs/eval_results.json",
-        help="Where to save results",
-    )
-    parser.add_argument(
-        "--tensor-parallel-size",
-        type=int,
-        default=1,
-        help="Number of GPUs for tensor parallelism",
-    )
+    parser = argparse.ArgumentParser(description="Evaluate NIAH with vLLM")
+    add_vllm_args(parser)
+    parser.add_argument("--eval-data", type=str, default="data/niah_val.jsonl")
+    parser.set_defaults(lora_path="outputs/niah-lora", output_file="outputs/eval_results.json")
     args = parser.parse_args()
 
-    examples = load_eval_data(args.eval_data)
-    print(f"Loaded {len(examples)} eval examples from {args.eval_data}")
+    examples = load_jsonl(args.eval_data)
+    print(f"Loaded {len(examples)} examples from {args.eval_data}")
 
-    sampling_params = SamplingParams(
-        temperature=0.0,  # greedy
-        max_tokens=args.max_tokens,
-    )
-
-    # Load model with LoRA support if needed
-    enable_lora = bool(args.lora_path)
-    print(f"Loading base model: {args.base_model} (enable_lora={enable_lora})")
-    llm = LLM(
-        model=args.base_model,
-        enable_lora=enable_lora,
-        max_lora_rank=64,
-        tensor_parallel_size=args.tensor_parallel_size,
-        max_model_len=4096,
-        gpu_memory_utilization=0.5,
-    )
+    llm, lora_request = load_model(args)
+    sampling_params = SamplingParams(temperature=0.0, max_tokens=args.max_tokens)
+    prompts = [format_alpaca_prompt(ex["instruction"], ex["input"]) for ex in examples]
 
     all_results = {}
 
-    # 1. Evaluate base model
-    print("\n=== Evaluating BASE model ===")
-    base_responses = run_eval(llm, examples, sampling_params)
-    base_metrics = evaluate_responses(examples, base_responses)
-    all_results["base"] = base_metrics
-    print(f"  Exact match:     {base_metrics['exact_match']:.1%}")
-    print(f"  Substring match: {base_metrics['substring_match']:.1%}")
+    # Base model
+    print("\n=== Evaluating BASE ===")
+    base = evaluate(examples, run_inference(llm, prompts, sampling_params))
+    all_results["base"] = base
+    print(f"  EM: {base['exact_match']:.1%}  Substring: {base['substring_match']:.1%}")
 
-    # 2. Evaluate LoRA-finetuned model
-    if args.lora_path:
-        lora_path = str(Path(args.lora_path).resolve())
-        print(f"\n=== Evaluating LORA model ({lora_path}) ===")
-        lora_request = LoRARequest("niah-lora", 1, lora_path)
-        lora_responses = run_eval(llm, examples, sampling_params, lora_request)
-        lora_metrics = evaluate_responses(examples, lora_responses)
-        all_results["lora"] = lora_metrics
-        print(f"  Exact match:     {lora_metrics['exact_match']:.1%}")
-        print(f"  Substring match: {lora_metrics['substring_match']:.1%}")
+    # LoRA model
+    if lora_request:
+        print("\n=== Evaluating LORA ===")
+        lora = evaluate(examples, run_inference(llm, prompts, sampling_params, lora_request))
+        all_results["lora"] = lora
+        print(f"  EM: {lora['exact_match']:.1%}  Substring: {lora['substring_match']:.1%}")
+        print(f"\n  Delta EM: {lora['exact_match'] - base['exact_match']:+.1%}  "
+              f"Substring: {lora['substring_match'] - base['substring_match']:+.1%}")
 
-    # Save results
-    os.makedirs(os.path.dirname(args.output_file) or ".", exist_ok=True)
-    with open(args.output_file, "w") as f:
-        json.dump(all_results, f, indent=2)
+    save_results(args.output_file, all_results)
     print(f"\nResults saved to {args.output_file}")
-
-    # Print comparison table
-    if args.lora_path:
-        print("\n=== Comparison ===")
-        print(f"{'Metric':<20} {'Base':>10} {'LoRA':>10} {'Delta':>10}")
-        print("-" * 52)
-        for metric in ["exact_match", "substring_match"]:
-            b = base_metrics[metric]
-            l = lora_metrics[metric]
-            print(f"{metric:<20} {b:>9.1%} {l:>9.1%} {l - b:>+9.1%}")
-
-    # Show a few example predictions
-    print("\n=== Sample Predictions ===")
-    n_show = min(5, len(examples))
-    for i in range(n_show):
-        print(f"\n--- Example {i+1} ---")
-        print(f"  Q: {all_results['base']['details'][i]['question'][:100]}")
-        print(f"  Gold: {all_results['base']['details'][i]['gold'][:100]}")
-        print(f"  Base: {all_results['base']['details'][i]['predicted'][:100]}")
-        if args.lora_path:
-            print(f"  LoRA: {all_results['lora']['details'][i]['predicted'][:100]}")
 
 
 if __name__ == "__main__":
