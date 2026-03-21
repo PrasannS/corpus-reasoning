@@ -96,9 +96,59 @@ python scripts/evaluate_contradiction.py \
 
 **Notes**: The LoRA model learned the output format (always produces exactly 3 valid JSON pairs) but outputs the same memorized pairs (`[[2, 5], [3, 8], [4, 10]]`) for every input — it did not learn to read the claims. The loss plateau at ~1.26 confirms the model never learned the mapping. This task likely requires a much larger model or different training approach (e.g., more epochs, chain-of-thought, or a model with stronger reasoning capabilities).
 
+## Experiment 3: API models (Gemini 2.5 Pro / Flash)
+
+Evaluate frontier API models on contradiction detection using `scripts/evaluate_contradiction_api.py`. Uses `llm_request_client.py` for parallel async requests with SQLite caching and cost tracking.
+
+**Ablation flags**:
+- `--instruction-after`: place task instruction after the corpus (vs before)
+- `--hint`: tell the model exactly how many contradicting pairs exist (value of K)
+- `--ablate-all`: run all 4 combinations
+
+### 100 claims, 3 contradictions (10 examples)
+
+```bash
+conda activate corpus-reasoning-eval
+python scripts/evaluate_contradiction_api.py \
+    --eval-data data/contradiction_eval_n100_k3.jsonl \
+    --models gemini-2.5-flash,gemini-2.5-pro \
+    --max-examples 10 --ablate-all
+```
+
+| Config | Flash Prec | Flash Rec | Flash F1 | Pro Prec | Pro Rec | Pro F1 |
+|---|---|---|---|---|---|---|
+| instr_before | 9.3% | 23.3% | 10.5% | 40.1% | 26.7% | 27.4% |
+| instr_after | 21.1% | 13.3% | 11.8% | 53.3% | 20.0% | 28.3% |
+| instr_before+hint | 20.0% | 20.0% | 20.0% | 30.0% | 30.0% | 30.0% |
+| instr_after+hint | 13.3% | 13.3% | 13.3% | 23.3% | 23.3% | 23.3% |
+
+**Notes**: Pro significantly outperforms Flash. Hint calibrates output count (precision ≈ recall) but doesn't improve F1. Instruction placement has minimal effect. Flash tends to over-predict without hint (up to 63 pairs for one example).
+
+### 1,000 claims, 3 contradictions (10 examples)
+
+```bash
+conda activate corpus-reasoning-eval
+python scripts/evaluate_contradiction_api.py \
+    --eval-data data/contradiction_eval_n1000_k3.jsonl \
+    --models gemini-2.5-flash,gemini-2.5-pro \
+    --max-examples 10
+python scripts/evaluate_contradiction_api.py \
+    --eval-data data/contradiction_eval_n1000_k3.jsonl \
+    --models gemini-2.5-flash,gemini-2.5-pro \
+    --max-examples 10 --instruction-after
+```
+
+| Config | Flash Prec | Flash Rec | Flash F1 | Pro Prec | Pro Rec | Pro F1 |
+|---|---|---|---|---|---|---|
+| instr_before | 0.2% | 3.3% | 0.4% | 2.9% | 13.3% | 4.4% |
+| instr_after | 1.4% | 6.7% | 2.2% | 1.1% | 3.3% | 1.7% |
+
+**Notes**: Performance drops drastically at 1000 claims (~21k tokens). Both models massively over-predict (Flash sometimes outputs [1,2], [1,3], [1,4]... sequentially). Pro's advantage narrows — it still has higher precision with instr_before but both models are near zero. The needle-in-a-haystack aspect (3 pairs among ~500k possible) makes this extremely challenging at scale.
+
+**Cost**: ~$0.77 total for n1000 runs ($0.40 instr_before + $0.37 instr_after).
+
 ## Large-scale eval sets (for future use)
 
 Generated but not yet evaluated:
 
-- `data/contradiction_eval_n1000_k3.jsonl` — 1,000 claims, 10 examples (~84k chars/example)
 - `data/contradiction_eval_n10000_k3.jsonl` — 10,000 claims, 10 examples (~850k chars/example)

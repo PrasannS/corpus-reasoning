@@ -31,19 +31,20 @@ from lib.io import load_jsonl
 from lib.io import ALPACA_TEMPLATE
 from lib.chunked_attention import (
     DOC_START, DOC_END, setup_tokenizer, wrap_documents,
-    build_chunked_causal_mask,
+    build_chunked_causal_mask, reorder_query,
 )
 
 
 class ChunkedDataset(Dataset):
     """Dataset that wraps documents with boundary tokens and builds labels."""
 
-    def __init__(self, data_path, tokenizer, max_len, doc_start_id, doc_end_id):
+    def __init__(self, data_path, tokenizer, max_len, doc_start_id, doc_end_id, query_position="after"):
         self.examples = load_jsonl(data_path)
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.doc_start_id = doc_start_id
         self.doc_end_id = doc_end_id
+        self.query_position = query_position
 
         # Precompute response marker tokens for label masking
         self.response_marker = tokenizer.encode(
@@ -65,8 +66,9 @@ class ChunkedDataset(Dataset):
     def __getitem__(self, idx):
         ex = self.examples[idx]
 
-        # Wrap documents with boundary tokens
-        wrapped_input = wrap_documents(ex["input"])
+        # Reorder query if needed, then wrap documents with boundary tokens
+        input_text = reorder_query(ex["input"], self.query_position)
+        wrapped_input = wrap_documents(input_text)
         prompt = ALPACA_TEMPLATE.format(instruction=ex["instruction"], input=wrapped_input)
         full_text = prompt + ex["output"] + self.tokenizer.eos_token
 
@@ -89,12 +91,15 @@ class ChunkedCollator:
 
     Supports batch_size > 1 by padding input_ids/labels to max length
     and building separate masks per example, then stacking.
+
+    When standard_attention=True, uses standard causal masking (no doc isolation).
     """
 
-    def __init__(self, doc_start_id, doc_end_id, pad_token_id):
+    def __init__(self, doc_start_id, doc_end_id, pad_token_id, standard_attention=False):
         self.doc_start_id = doc_start_id
         self.doc_end_id = doc_end_id
         self.pad_token_id = pad_token_id
+        self.standard_attention = standard_attention
 
     def __call__(self, features):
         max_len = max(f["input_ids"].size(0) for f in features)
@@ -110,22 +115,34 @@ class ChunkedCollator:
                 ids = torch.cat([ids, torch.full((pad_len,), self.pad_token_id, dtype=ids.dtype)])
                 labs = torch.cat([labs, torch.full((pad_len,), -100, dtype=labs.dtype)])
 
-            # Build chunked mask for this example, then pad to max_len
-            mask = build_chunked_causal_mask(
-                f["input_ids"], self.doc_start_id, self.doc_end_id,
-            )  # (1, 1, orig_len, orig_len)
-
-            if pad_len > 0:
-                # Pad mask: padded positions should not be attended to
-                min_val = torch.finfo(mask.dtype).min
+            if self.standard_attention:
+                # Standard causal mask — no doc isolation
                 orig_len = f["input_ids"].size(0)
-                full_mask = torch.full((1, 1, max_len, max_len), min_val, dtype=mask.dtype)
-                full_mask[:, :, :orig_len, :orig_len] = mask
-                mask = full_mask
+                dtype = torch.bfloat16
+                min_val = torch.finfo(dtype).min
+                mask = torch.triu(torch.full((max_len, max_len), min_val, dtype=dtype), diagonal=1)
+                # Mask out padding columns
+                if pad_len > 0:
+                    mask[:, orig_len:] = min_val
+                mask = mask.unsqueeze(0)  # (1, max_len, max_len)
+            else:
+                # Build chunked mask for this example, then pad to max_len
+                mask = build_chunked_causal_mask(
+                    f["input_ids"], self.doc_start_id, self.doc_end_id,
+                )  # (1, 1, orig_len, orig_len)
+
+                if pad_len > 0:
+                    min_val = torch.finfo(mask.dtype).min
+                    orig_len = f["input_ids"].size(0)
+                    full_mask = torch.full((1, 1, max_len, max_len), min_val, dtype=mask.dtype)
+                    full_mask[:, :, :orig_len, :orig_len] = mask
+                    mask = full_mask
+
+                mask = mask.squeeze(0)  # (1, max_len, max_len)
 
             batch_ids.append(ids)
             batch_labels.append(labs)
-            batch_masks.append(mask.squeeze(0))  # (1, max_len, max_len)
+            batch_masks.append(mask)
 
         return {
             "input_ids": torch.stack(batch_ids),
@@ -197,13 +214,16 @@ def main():
     model.print_trainable_parameters()
 
     # Dataset
+    query_position = cfg.get("query_position", "after")
     dataset = ChunkedDataset(
         data_path, tokenizer, cfg.get("sequence_len", 8192),
-        doc_start_id, doc_end_id,
+        doc_start_id, doc_end_id, query_position=query_position,
     )
     print(f"Loaded {len(dataset)} training examples from {data_path}")
 
-    collator = ChunkedCollator(doc_start_id, doc_end_id, tokenizer.pad_token_id)
+    standard_attention = cfg.get("standard_attention", False)
+    collator = ChunkedCollator(doc_start_id, doc_end_id, tokenizer.pad_token_id,
+                               standard_attention=standard_attention)
 
     # Compute total steps for save strategy (account for DDP world size)
     world_size = max(torch.cuda.device_count(), 1)
@@ -221,9 +241,11 @@ def main():
     grad_acc = cfg.get("gradient_accumulation_steps", 8)
     lora_r = cfg.get("lora_r", 16)
     seq_len = cfg.get("sequence_len", 8192)
+    qpos = query_position[:1]  # "b" or "a"
+    attn_tag = "std" if standard_attention else "chunked"
     run_name = (
         cfg.get("wandb_name")
-        or f"chunked_{data_stem}_lr{lr}_ep{epochs}_r{lora_r}_seq{seq_len}_ga{grad_acc}"
+        or f"{attn_tag}_{data_stem}_q{qpos}_lr{lr}_ep{epochs}_r{lora_r}_seq{seq_len}_ga{grad_acc}"
     )
 
     # Training arguments

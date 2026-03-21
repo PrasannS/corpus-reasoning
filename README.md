@@ -260,3 +260,8 @@ deepspeed: configs/deepspeed_zero1.json
 - Switch to DeepSpeed ZeRO-2 or ZeRO-3 for larger models
 - Reduce `micro_batch_size` if running out of VRAM
 - Use `axolotl fetch deepspeed_configs` to get all available DeepSpeed configs
+
+
+# Yichuan's Suggestions
+- Have separate shells, use git worktree to have multiple agents
+- Have a TODO list / progress / record of all experiments

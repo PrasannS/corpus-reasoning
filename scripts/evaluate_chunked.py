@@ -23,7 +23,7 @@ from lib.io import format_alpaca_prompt
 from lib.metrics import exact_match, substring_match, token_f1, max_over_answers, aggregate
 from lib.chunked_attention import (
     DOC_START, DOC_END, setup_tokenizer, wrap_documents,
-    build_chunked_causal_mask,
+    build_chunked_causal_mask, reorder_query,
 )
 from evaluate_helmet_rag import DATASET_CONFIG, PASSAGE_TEMPLATE, USER_TEMPLATE, build_demos, parse_output
 
@@ -54,14 +54,21 @@ def load_model(args):
 
 @torch.no_grad()
 def generate_chunked(model, tokenizer, input_ids, doc_start_id, doc_end_id,
-                     max_new_tokens=20, stop_token_ids=None):
-    """Generate with chunked attention during prefill, standard causal during decode."""
+                     max_new_tokens=20, stop_token_ids=None, standard_attention=False):
+    """Generate with chunked (or standard) attention during prefill, standard causal during decode."""
     device = input_ids.device
 
-    # Phase 1: Prefill with chunked attention mask
-    mask = build_chunked_causal_mask(
-        input_ids.squeeze(0), doc_start_id, doc_end_id,
-    ).to(device)
+    # Phase 1: Prefill with chunked or standard attention mask
+    if standard_attention:
+        seq_len = input_ids.size(1)
+        dtype = torch.bfloat16
+        mask = torch.triu(
+            torch.full((seq_len, seq_len), torch.finfo(dtype).min, dtype=dtype), diagonal=1
+        ).unsqueeze(0).unsqueeze(0).to(device)
+    else:
+        mask = build_chunked_causal_mask(
+            input_ids.squeeze(0), doc_start_id, doc_end_id,
+        ).to(device)
 
     outputs = model(input_ids=input_ids, attention_mask=mask, use_cache=True)
     past_kv = outputs.past_key_values
@@ -69,7 +76,7 @@ def generate_chunked(model, tokenizer, input_ids, doc_start_id, doc_end_id,
 
     # Phase 2: Autoregressive decode with standard causal attention
     generated = [next_token]
-    for _ in range(max_new_tokens - 1):
+    for _ in range(max_new_tokens - 1): # this is a greedy decode
         outputs = model(input_ids=next_token, past_key_values=past_kv, use_cache=True)
         past_kv = outputs.past_key_values
         next_token = outputs.logits[:, -1, :].argmax(dim=-1, keepdim=True)
@@ -81,10 +88,11 @@ def generate_chunked(model, tokenizer, input_ids, doc_start_id, doc_end_id,
     return tokenizer.decode(gen_ids[0], skip_special_tokens=True)
 
 
-def load_helmet_examples(dataset_name, num_docs, max_samples, shots):
+def load_helmet_examples(dataset_name, num_docs, max_samples, shots, query_position="after"):
     """Load HELMET eval data and build prompts with doc boundary tokens."""
     from evaluate_helmet_rag import load_dataset_for_eval
-    raw_examples = load_dataset_for_eval(dataset_name, max_samples, shots, num_docs)
+    raw_examples = load_dataset_for_eval(dataset_name, max_samples, shots, num_docs,
+                                          query_position=query_position)
 
     # The prompts from load_dataset_for_eval use HELMET format (not alpaca).
     # We need to wrap documents with boundary tokens.
@@ -95,7 +103,7 @@ def load_helmet_examples(dataset_name, num_docs, max_samples, shots):
     return wrapped
 
 
-def load_alpaca_examples(path, max_samples):
+def load_alpaca_examples(path, max_samples, query_position="after"):
     """Load alpaca-format JSONL and build prompts with doc boundary tokens."""
     examples = load_jsonl(path)
     if max_samples and len(examples) > max_samples:
@@ -105,7 +113,8 @@ def load_alpaca_examples(path, max_samples):
 
     result = []
     for ex in examples:
-        wrapped_input = wrap_documents(ex["input"])
+        input_text = reorder_query(ex["input"], query_position)
+        wrapped_input = wrap_documents(input_text)
         prompt = format_alpaca_prompt(ex["instruction"], wrapped_input)
         answers = ex["output"] if isinstance(ex["output"], list) else [ex["output"]]
         result.append({"prompt": prompt, "answers": answers, "question": ex.get("question", "")})
@@ -141,6 +150,13 @@ def main():
 
     # Alpaca format
     parser.add_argument("--eval-data", type=str, default="", help="Alpaca-format JSONL")
+
+    # Query position and attention type
+    parser.add_argument("--query-position", type=str, default="after",
+                        choices=["before", "after", "both"],
+                        help="Place question before or after documents")
+    parser.add_argument("--standard-attention", action="store_true",
+                        help="Use standard causal attention instead of chunked")
     args = parser.parse_args()
 
     if not args.datasets and not args.eval_data:
@@ -164,12 +180,15 @@ def main():
 
     for source_type, source in eval_sources:
         label = source if source_type == "helmet" else Path(source).stem
-        print(f"\n{'='*60}\nEvaluating: {label} (chunked attention)\n{'='*60}")
+        attn_label = "standard" if args.standard_attention else "chunked"
+        print(f"\n{'='*60}\nEvaluating: {label} ({attn_label} attention, query {args.query_position})\n{'='*60}")
 
         if source_type == "helmet":
-            examples = load_helmet_examples(source, args.num_docs, args.max_test_samples, args.shots)
+            examples = load_helmet_examples(source, args.num_docs, args.max_test_samples, args.shots,
+                                            query_position=args.query_position)
         else:
-            examples = load_alpaca_examples(source, args.max_test_samples)
+            examples = load_alpaca_examples(source, args.max_test_samples,
+                                            query_position=args.query_position)
 
         print(f"  {len(examples)} examples")
         results = []
@@ -181,6 +200,7 @@ def main():
             response = generate_chunked(
                 model, tokenizer, input_ids, doc_start_id, doc_end_id,
                 max_new_tokens=args.max_tokens, stop_token_ids=stop_ids,
+                standard_attention=args.standard_attention,
             )
 
             m = compute_metrics(response, ex["answers"])

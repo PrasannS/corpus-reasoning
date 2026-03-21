@@ -1,5 +1,5 @@
-"""Chunked document attention: documents attend only within themselves,
-query/answer tokens attend to everything.
+"""Chunked document attention: documents attend within themselves and to
+query tokens; query/answer tokens attend to everything.
 
 Special tokens <|doc_start|> and <|doc_end|> mark document boundaries.
 """
@@ -21,14 +21,27 @@ def wrap_documents(text: str) -> str:
     """Wrap each 'Document (Title: ...): ...' block with boundary tokens.
 
     Handles both NQ RAG format (documents separated by \\n\\n) and
-    HELMET format. The question portion after documents is left unwrapped.
+    HELMET format. Supports query appearing before or after documents.
+    Non-document text (question, instruction) is left unwrapped.
     """
-    # Find where the question starts (everything after is non-document)
-    question_idx = text.rfind("\n\nQuestion:")
-    if question_idx == -1:
-        doc_section, query_section = text, ""
+    # Find question — may be before, after, or both
+    question_before_match = re.match(r'^(Question:.*?\n\n)', text)
+    question_after_idx = text.rfind("\n\nQuestion:")
+
+    query_before, query_after = "", ""
+    if question_before_match:
+        query_before = question_before_match.group(1)
+        doc_section = text[len(query_before):]
+        # Also check for question at end (both case)
+        q_after_idx = doc_section.rfind("\n\nQuestion:")
+        if q_after_idx != -1:
+            query_after = doc_section[q_after_idx:]
+            doc_section = doc_section[:q_after_idx]
+    elif question_after_idx != -1:
+        doc_section = text[:question_after_idx]
+        query_after = text[question_after_idx:]
     else:
-        doc_section, query_section = text[:question_idx], text[question_idx:]
+        doc_section = text
 
     # Split at document boundaries and wrap each
     parts = re.split(r'\n\n(?=Document \(Title:)', doc_section)
@@ -40,7 +53,48 @@ def wrap_documents(text: str) -> str:
         elif p:
             wrapped.append(p)
 
-    return "\n\n".join(wrapped) + query_section
+    return query_before + "\n\n".join(wrapped) + query_after
+
+
+def reorder_query(text: str, position: str = "after") -> str:
+    """Move the 'Question: ...' line before or after documents in the input.
+
+    Args:
+        text: The input field (documents + question).
+        position: "before" or "after".
+
+    Returns:
+        Reordered text.
+    """
+    if position == "after":
+        # Check if question is at the start and move to end
+        m = re.match(r'^(Question:.*?)(\n\n)([\s\S]*)', text)
+        if m:
+            return m.group(3) + "\n\n" + m.group(1)
+        return text  # already after or no question found
+    elif position == "before":
+        # Check if question is at the end and move to start
+        m = re.search(r'\n\n(Question:.*)$', text)
+        if m:
+            return m.group(1) + "\n\n" + text[:m.start()]
+        return text  # already before or no question found
+    elif position == "both":
+        # Put question both before and after documents
+        # First, find and extract the question
+        m = re.search(r'\n\n(Question:.*)$', text)
+        if m:
+            question = m.group(1)
+            docs = text[:m.start()]
+            return question + "\n\n" + docs + "\n\n" + question
+        # Maybe question is already at the start
+        m = re.match(r'^(Question:.*?)(\n\n)([\s\S]*)', text)
+        if m:
+            question = m.group(1)
+            docs = m.group(3)
+            return question + "\n\n" + docs + "\n\n" + question
+        return text
+    else:
+        raise ValueError(f"Invalid query position: {position!r}, expected 'before', 'after', or 'both'")
 
 
 def find_chunk_spans(input_ids, doc_start_id, doc_end_id):
@@ -60,8 +114,12 @@ def find_chunk_spans(input_ids, doc_start_id, doc_end_id):
 def build_chunked_causal_mask(input_ids, doc_start_id, doc_end_id, dtype=torch.bfloat16):
     """Build 4D attention mask with block-diagonal document attention.
 
-    - Tokens inside a document chunk attend only within that chunk (causal).
+    - Tokens inside a document chunk attend within that chunk AND to
+      non-chunk (query/instruction) tokens that precede them (causal).
     - Tokens outside any chunk attend to all preceding tokens (standard causal).
+
+    This allows each document to "see" the query, while remaining isolated
+    from other documents.
 
     Args:
         input_ids: (seq_len,) tensor of token IDs.
@@ -84,11 +142,15 @@ def build_chunked_causal_mask(input_ids, doc_start_id, doc_end_id, dtype=torch.b
     for idx, (s, e) in enumerate(spans):
         chunk_id[s:e] = idx
 
-    # Vectorized mask: causal AND (same_chunk OR not_in_chunk)
+    # Vectorized mask: causal AND (same_chunk OR row_not_in_chunk OR col_not_in_chunk)
+    # - same_chunk: tokens in the same document chunk can attend to each other
+    # - row_not_in_chunk: query/answer tokens attend to all preceding tokens
+    # - col_not_in_chunk: doc tokens can attend to query tokens (key change)
     causal = torch.tril(torch.ones(seq_len, seq_len, dtype=torch.bool))
     same_chunk = (chunk_id.unsqueeze(0) == chunk_id.unsqueeze(1)) & (chunk_id.unsqueeze(0) >= 0)
-    not_in_chunk = (chunk_id < 0).unsqueeze(1).expand(-1, seq_len)
-    bool_mask = causal & (same_chunk | not_in_chunk)
+    row_not_in_chunk = (chunk_id < 0).unsqueeze(1).expand(-1, seq_len)
+    col_not_in_chunk = (chunk_id < 0).unsqueeze(0).expand(seq_len, -1)
+    bool_mask = causal & (same_chunk | row_not_in_chunk | col_not_in_chunk)
 
     min_val = torch.finfo(dtype).min
     float_mask = torch.where(bool_mask, torch.zeros(1, dtype=dtype), torch.full((1,), min_val, dtype=dtype))

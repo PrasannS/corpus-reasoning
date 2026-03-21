@@ -26,6 +26,20 @@ USER_TEMPLATE = (
     "{demos}{context}\n\nQuestion: {question}"
 )
 
+# Query-before variant: question appears before the documents
+USER_TEMPLATE_QUERY_BEFORE = (
+    "Use the given documents to write a concise and short answer to the question. "
+    "Write your answer in the following format:\nAnswer: [answer]\n\n"
+    "{demos}Question: {question}\n\n{context}"
+)
+
+# Query-both variant: question appears before AND after the documents
+USER_TEMPLATE_QUERY_BOTH = (
+    "Use the given documents to write a concise and short answer to the question. "
+    "Write your answer in the following format:\nAnswer: [answer]\n\n"
+    "{demos}Question: {question}\n\n{context}\n\nQuestion: {question}"
+)
+
 DATASET_CONFIG = {
     "nq": {
         "test_file": "data/data/kilt/nq-dev-multikilt_1000_k{num_docs}_dep6.jsonl",
@@ -95,22 +109,25 @@ def compute_metrics(prediction, answers):
     return {"exact_match": float(em), "substring_exact_match": float(sub_em), "f1": f1}
 
 
-def load_dataset_for_eval(dataset_name, max_samples=None, shots=2, num_docs=1000):
+def load_dataset_for_eval(dataset_name, max_samples=None, shots=2, num_docs=1000, query_position="after"):
     config = DATASET_CONFIG[dataset_name]
-    test_file = config["test_file"].format(num_docs=num_docs)
-    if not Path(test_file).exists():
-        for fb in [500, 105, 100, 50, 10, 3]:
-            alt = config["test_file"].format(num_docs=fb)
-            if Path(alt).exists():
-                print(f"  Fallback: {alt}")
-                test_file = alt
-                break
-        else:
-            raise FileNotFoundError(f"No test file for {dataset_name}")
+    # For num_docs=0 (no-context baseline), load any available test file for the questions
+    search_docs = [num_docs] if num_docs > 0 else []
+    search_docs += [500, 105, 100, 50, 20, 10, 3]
+    test_file = None
+    for nd in search_docs:
+        candidate = config["test_file"].format(num_docs=nd)
+        if Path(candidate).exists():
+            if nd != num_docs:
+                print(f"  Fallback: {candidate}")
+            test_file = candidate
+            break
+    if test_file is None:
+        raise FileNotFoundError(f"No test file for {dataset_name}")
 
     print(f"  Loading: {test_file}")
     test_data = load_jsonl(test_file)
-    demo_data = load_jsonl(config["demo_file"]) if shots > 0 and Path(config["demo_file"]).exists() else []
+    demo_data = load_jsonl(config["demo_file"]) if shots > 0 and num_docs > 0 and Path(config["demo_file"]).exists() else []
 
     if max_samples and len(test_data) > max_samples:
         key = "id" if "id" in test_data[0] else "question"
@@ -123,11 +140,22 @@ def load_dataset_for_eval(dataset_name, max_samples=None, shots=2, num_docs=1000
         random.seed(42)
         test_data = random.sample(unique, min(max_samples, len(unique)))
 
+    if query_position == "before":
+        template = USER_TEMPLATE_QUERY_BEFORE
+    elif query_position == "both":
+        template = USER_TEMPLATE_QUERY_BOTH
+    else:
+        template = USER_TEMPLATE
+
     examples = []
     for s in test_data:
-        demos = build_demos(demo_data, s, shots)
-        context = "\n\n".join(PASSAGE_TEMPLATE.format(**c) for c in s.get("ctxs", []))
-        prompt = USER_TEMPLATE.format(demos=demos, context=context, question=s["question"]) + "\nAnswer:"
+        if num_docs == 0:
+            # No-context baseline: question only, no documents or demos
+            prompt = USER_TEMPLATE.format(demos="", context="", question=s["question"]) + "\nAnswer:"
+        else:
+            demos = build_demos(demo_data, s, shots)
+            context = "\n\n".join(PASSAGE_TEMPLATE.format(**c) for c in s.get("ctxs", []))
+            prompt = template.format(demos=demos, context=context, question=s["question"]) + "\nAnswer:"
         examples.append({"prompt": prompt, "answers": s["answers"], "question": s["question"]})
     return examples
 
@@ -139,6 +167,9 @@ def main():
     parser.add_argument("--max-test-samples", type=int, default=100)
     parser.add_argument("--shots", type=int, default=2)
     parser.add_argument("--num-docs", type=int, default=1000)
+    parser.add_argument("--query-position", type=str, default="after",
+                        choices=["before", "after", "both"],
+                        help="Place question before or after documents")
     parser.set_defaults(max_tokens=20, output_file="outputs/helmet_rag_results.json")
     args = parser.parse_args()
 
@@ -154,7 +185,8 @@ def main():
             print(f"  Unknown dataset: {ds_name}")
             continue
         try:
-            examples = load_dataset_for_eval(ds_name, args.max_test_samples, args.shots, args.num_docs)
+            examples = load_dataset_for_eval(ds_name, args.max_test_samples, args.shots, args.num_docs,
+                                                query_position=args.query_position)
         except FileNotFoundError as e:
             print(f"  {e}")
             continue
