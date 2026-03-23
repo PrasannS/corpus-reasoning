@@ -43,9 +43,15 @@ python scripts/evaluate_contradiction.py --eval-data data/contradiction_eval_n10
 - Dataset format: JSONL with alpaca-style fields (`instruction`, `input`, `output`)
 - Shared code goes in `scripts/lib/` (io.py, vllm_utils.py, metrics.py, common.sh)
 - **Experiment tracking**: All experiment results and reproduction instructions go in `results/` as markdown files (one per task). Each file should include: task description, dataset details, config parameters, exact commands to reproduce, and results tables. Update these files whenever a new experiment is run.
+- **Eval prompt must exactly match training prompt.** This means:
+  - Trained models (LoRA/full FT) use alpaca prompt format + 0 few-shot demos (training data has no demos)
+  - Base models use HELMET prompt format + 2 few-shot demos (standard HELMET eval)
+  - Eval scripts auto-enforce this: when `use_alpaca=True`, shots is set to 0
+  - Any new features added to eval prompts must also be added to training data generation, and vice versa
 
 ## User Preferences
 
+- **Commit to git frequently.** After completing a meaningful unit of work (new script, config, experiment results, bug fix), commit the changes. Don't let work accumulate uncommitted across long sessions.
 - **Always log progress for long-running processes.** When running downloads, extractions, training, or any task that takes more than ~30 seconds, ensure there is a way for the user to monitor progress (e.g., `--progress`, `pv`, `tqdm`, writing to a log file with `tee`, or periodic status lines). Provide the user a `tail -f` command or similar to watch the output. Avoid approaches that flood Claude's context with huge outputs — prefer writing to a file the user can `tail`.
 
 ## Known Issues

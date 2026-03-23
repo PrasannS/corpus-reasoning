@@ -13,28 +13,33 @@ import random
 import re
 from pathlib import Path
 from vllm import SamplingParams
-from lib.io import load_jsonl, save_results
+from lib.io import load_jsonl, save_results, format_alpaca_prompt
 from lib.vllm_utils import add_vllm_args, load_model, run_inference
 from lib.metrics import exact_match, substring_match, token_f1, max_over_answers, aggregate
 
 # HELMET-compatible templates
 PASSAGE_TEMPLATE = "Document (Title: {title}): {text}"
+PASSAGE_TEMPLATE_NO_TITLE = "Document: {text}"
 DEMO_TEMPLATE = "{documents}\n\nQuestion: {question}\nAnswer: {answer}"
-USER_TEMPLATE = (
+
+# Instruction matches training data (generate_nq_training_data.py)
+INSTRUCTION = (
+    "Use the given documents to write a concise and short answer to the question. "
+    "Write your answer in the following format:\nAnswer: [answer]"
+)
+
+# Original HELMET-style templates (for base model eval without alpaca wrapper)
+HELMET_TEMPLATE = (
     "Use the given documents to write a concise and short answer to the question. "
     "Write your answer in the following format:\nAnswer: [answer]\n\n"
     "{demos}{context}\n\nQuestion: {question}"
 )
-
-# Query-before variant: question appears before the documents
-USER_TEMPLATE_QUERY_BEFORE = (
+HELMET_TEMPLATE_QUERY_BEFORE = (
     "Use the given documents to write a concise and short answer to the question. "
     "Write your answer in the following format:\nAnswer: [answer]\n\n"
     "{demos}Question: {question}\n\n{context}"
 )
-
-# Query-both variant: question appears before AND after the documents
-USER_TEMPLATE_QUERY_BOTH = (
+HELMET_TEMPLATE_QUERY_BOTH = (
     "Use the given documents to write a concise and short answer to the question. "
     "Write your answer in the following format:\nAnswer: [answer]\n\n"
     "{demos}Question: {question}\n\n{context}\n\nQuestion: {question}"
@@ -74,7 +79,13 @@ def parse_output(output: str, prefix: str = "Answer:") -> str | None:
     return None
 
 
-def build_demos(demo_data, sample, shots):
+def _format_passage(ctx, no_titles=False):
+    if no_titles:
+        return PASSAGE_TEMPLATE_NO_TITLE.format(text=ctx["text"])
+    return PASSAGE_TEMPLATE.format(**ctx)
+
+
+def build_demos(demo_data, sample, shots, no_titles=False):
     if shots == 0:
         return ""
     h = int(hashlib.sha256(str(sample["question"]).encode()).hexdigest(), 16) % 2**31
@@ -91,7 +102,7 @@ def build_demos(demo_data, sample, shots):
             break
     texts = []
     for d in unique:
-        docs = "\n\n".join(PASSAGE_TEMPLATE.format(**c) for c in d.get("ctxs", []))
+        docs = "\n\n".join(_format_passage(c, no_titles) for c in d.get("ctxs", []))
         ans = d["answers"][0] if isinstance(d["answers"], list) else d["answers"]
         texts.append(DEMO_TEMPLATE.format(documents=docs, question=d["question"], answer=ans))
     return "\n\n".join(texts) + "\n\n" if texts else ""
@@ -109,8 +120,13 @@ def compute_metrics(prediction, answers):
     return {"exact_match": float(em), "substring_exact_match": float(sub_em), "f1": f1}
 
 
-def load_dataset_for_eval(dataset_name, max_samples=None, shots=2, num_docs=1000, query_position="after"):
+def load_dataset_for_eval(dataset_name, max_samples=None, shots=2, num_docs=1000,
+                          query_position="after", use_alpaca=True, no_titles=False):
     config = DATASET_CONFIG[dataset_name]
+    # Trained models (alpaca format) use 0 shots to match training data
+    if use_alpaca and shots > 0:
+        print(f"  Note: overriding shots={shots} -> 0 for alpaca format (matches training data)")
+        shots = 0
     # For num_docs=0 (no-context baseline), load any available test file for the questions
     search_docs = [num_docs] if num_docs > 0 else []
     search_docs += [500, 105, 100, 50, 20, 10, 3]
@@ -125,7 +141,8 @@ def load_dataset_for_eval(dataset_name, max_samples=None, shots=2, num_docs=1000
     if test_file is None:
         raise FileNotFoundError(f"No test file for {dataset_name}")
 
-    print(f"  Loading: {test_file}")
+    fmt_label = "alpaca" if use_alpaca else "helmet"
+    print(f"  Loading: {test_file} (format={fmt_label}, titles={'no' if no_titles else 'yes'})")
     test_data = load_jsonl(test_file)
     demo_data = load_jsonl(config["demo_file"]) if shots > 0 and num_docs > 0 and Path(config["demo_file"]).exists() else []
 
@@ -140,22 +157,41 @@ def load_dataset_for_eval(dataset_name, max_samples=None, shots=2, num_docs=1000
         random.seed(42)
         test_data = random.sample(unique, min(max_samples, len(unique)))
 
-    if query_position == "before":
-        template = USER_TEMPLATE_QUERY_BEFORE
-    elif query_position == "both":
-        template = USER_TEMPLATE_QUERY_BOTH
-    else:
-        template = USER_TEMPLATE
-
     examples = []
     for s in test_data:
-        if num_docs == 0:
-            # No-context baseline: question only, no documents or demos
-            prompt = USER_TEMPLATE.format(demos="", context="", question=s["question"]) + "\nAnswer:"
+        demos = ""
+        context = ""
+        if num_docs > 0:
+            demos = build_demos(demo_data, s, shots, no_titles=no_titles)
+            context = "\n\n".join(_format_passage(c, no_titles) for c in s.get("ctxs", []))
+
+        if use_alpaca:
+            # Alpaca format: matches training data (instruction + input wrapped in alpaca template)
+            if num_docs == 0:
+                input_text = f"Question: {s['question']}"
+            else:
+                if demos:
+                    context = demos + context
+                if query_position == "before":
+                    input_text = f"Question: {s['question']}\n\n{context}"
+                elif query_position == "both":
+                    input_text = f"Question: {s['question']}\n\n{context}\n\nQuestion: {s['question']}"
+                else:
+                    input_text = f"{context}\n\nQuestion: {s['question']}"
+            prompt = format_alpaca_prompt(INSTRUCTION, input_text)
         else:
-            demos = build_demos(demo_data, s, shots)
-            context = "\n\n".join(PASSAGE_TEMPLATE.format(**c) for c in s.get("ctxs", []))
-            prompt = template.format(demos=demos, context=context, question=s["question"]) + "\nAnswer:"
+            # Original HELMET format (no alpaca wrapper)
+            if num_docs == 0:
+                prompt = HELMET_TEMPLATE.format(demos="", context="", question=s["question"]) + "\nAnswer:"
+            else:
+                if query_position == "before":
+                    template = HELMET_TEMPLATE_QUERY_BEFORE
+                elif query_position == "both":
+                    template = HELMET_TEMPLATE_QUERY_BOTH
+                else:
+                    template = HELMET_TEMPLATE
+                prompt = template.format(demos=demos, context=context, question=s["question"]) + "\nAnswer:"
+
         examples.append({"prompt": prompt, "answers": s["answers"], "question": s["question"]})
     return examples
 
@@ -170,12 +206,21 @@ def main():
     parser.add_argument("--query-position", type=str, default="after",
                         choices=["before", "after", "both"],
                         help="Place question before or after documents")
+    parser.add_argument("--no-titles", action="store_true",
+                        help="Omit document titles from prompts")
     parser.set_defaults(max_tokens=20, output_file="outputs/helmet_rag_results.json")
     args = parser.parse_args()
 
     llm, lora_request = load_model(args)
     sampling_params = SamplingParams(temperature=0.0, max_tokens=args.max_tokens, stop=["\n"])
-    model_tag = "lora" if lora_request else "base"
+
+    # Use alpaca prompt format for trained models (LoRA/full FT), original HELMET format for base
+    use_alpaca = bool(args.lora_path) or args.base_model != "NousResearch/Llama-3.2-1B"
+    # Trained models use 0 shots to match training data format (no demos in training)
+    if use_alpaca and args.shots != 0:
+        print(f"  Auto-setting shots=0 for trained model (training data has no demos)")
+        args.shots = 0
+    print(f"Prompt format: {'alpaca' if use_alpaca else 'helmet (base model)'}, shots={args.shots}")
 
     all_results, summary = {}, {}
     for ds_name in args.datasets.split(","):
@@ -186,7 +231,8 @@ def main():
             continue
         try:
             examples = load_dataset_for_eval(ds_name, args.max_test_samples, args.shots, args.num_docs,
-                                                query_position=args.query_position)
+                                                query_position=args.query_position, use_alpaca=use_alpaca,
+                                                no_titles=args.no_titles)
         except FileNotFoundError as e:
             print(f"  {e}")
             continue

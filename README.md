@@ -264,4 +264,4 @@ deepspeed: configs/deepspeed_zero1.json
 
 # Yichuan's Suggestions
 - Have separate shells, use git worktree to have multiple agents
-- Have a TODO list / progress / record of all experiments
+- Have a TODO list / progress / record of all experimentso

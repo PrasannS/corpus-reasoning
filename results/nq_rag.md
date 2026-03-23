@@ -14,22 +14,27 @@ Fine-tune Llama-3.2-1B on Natural Questions with retrieval-augmented contexts (H
 
 ### Query position × Attention type ablation (2.5k training examples)
 
+Base model uses HELMET prompt format; LoRA models use alpaca prompt format (matching training).
+
 | Attention | Query Position | Base EM | Base F1 | LoRA EM | LoRA F1 |
 |---|---|---|---|---|---|
-| Standard | after (default) | 29.0% | 40.0% | 33.0% | 43.6% |
-| Standard | before | 2.0% | 8.0% | 1.0% | 3.6% |
-| Standard | both | 28.0% | 38.6% | **38.0%** | **48.5%** |
-| Chunked | after | 10.0% | 22.7% | 31.0% | 41.4% |
-| Chunked | before | 3.0% | 8.4% | 2.0% | 3.9% |
-| Chunked | both | 13.0% | 25.6% | 33.0% | 44.5% |
+| Standard | after (default) | 29.0% | 39.9% | 33.0% | 44.3% |
+| Standard | before | 1.0% | 6.5% | 34.0% | 41.0% |
+| Standard | both | 28.0% | 38.6% | **41.0%** | **51.9%** |
+| Chunked | after | 9.0% | 22.4% | 30.0% | 38.9% |
+| Chunked | before | 3.0% | 7.7% | **39.0%** | **46.4%** |
+| Chunked | both | 12.0% | 25.4% | 32.0% | 45.2% |
 
 **Key findings**:
-- **Query-both is the best configuration**: Standard+both LoRA achieves 38% EM / 48.5% F1, the best across all conditions. Chunked+both LoRA also beats chunked+after (33% vs 31% EM).
-- **Query-before alone fails completely** (1-3% EM) because the question is too far from the generation position. But adding the question before documents too (both) helps the model attend to it during document processing.
-- **Standard attention outperforms chunked for base model** (29% vs 10% EM for after, 28% vs 13% for both), but after fine-tuning the gap narrows (38% vs 33% for both).
-- **Fine-tuning helps most with chunked attention**: +20% EM (chunked+both) vs +10% EM (standard+both).
+- **Query-both is the best for standard attention**: Standard+both LoRA achieves 41% EM / 51.9% F1, the best overall.
+- **Query-before works well with chunked LoRA** (39% EM), nearly matching standard+both. This makes sense: with chunked attention, documents can't attend to each other anyway, so placing the query before them gives each document direct access to the question during its own processing.
+- **Query-before fails for base models** (1-3% EM) because the generation position is too far from the question without fine-tuning.
+- **Standard attention outperforms chunked for base model** (29% vs 9% EM for after, 28% vs 12% for both), but after fine-tuning the gap narrows (41% vs 32% for both).
+- **Fine-tuning provides large gains across all configurations**, with the biggest delta for chunked+before (+36% EM).
 
-### Prior results
+### Prior results (pre-prompt-fix, deprecated)
+
+These results used a non-alpaca prompt format at eval time and are **no longer comparable** to the corrected numbers above. Kept for historical reference only.
 
 | Model | EM | Substring EM | F1 |
 |---|---|---|---|
@@ -78,6 +83,8 @@ python scripts/evaluate_helmet_rag.py --base-model NousResearch/Llama-3.2-1B --l
 ```
 
 **Results** (NQ, 20 docs, 100 eval samples, 2-shot):
+
+*Note: These results used a non-alpaca eval prompt format. See Experiment 4 for corrected numbers with alpaca-format prompts matching the training format.*
 
 | Model | EM | Substring EM | F1 |
 |---|---|---|---|
@@ -225,13 +232,15 @@ python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-sample
 
 **Results** (NQ, 20 docs, 100 eval samples, 2-shot):
 
+Base model uses HELMET prompt format; LoRA models use alpaca prompt format (matching training).
+
 | Attention | Query Position | Base EM | Base F1 | LoRA EM | LoRA F1 |
 |---|---|---|---|---|---|
-| Standard | after (default) | 29.0% | 40.0% | 33.0% | 43.6% |
-| Standard | before | 2.0% | 8.0% | 1.0% | 3.6% |
-| Standard | both | 28.0% | 38.6% | **38.0%** | **48.5%** |
-| Chunked | after | 10.0% | 22.7% | 31.0% | 41.4% |
-| Chunked | before | 3.0% | 8.4% | 2.0% | 3.9% |
-| Chunked | both | 13.0% | 25.6% | 33.0% | 44.5% |
+| Standard | after (default) | 29.0% | 39.9% | 33.0% | 44.3% |
+| Standard | before | 1.0% | 6.5% | 34.0% | 41.0% |
+| Standard | both | 28.0% | 38.6% | **41.0%** | **51.9%** |
+| Chunked | after | 9.0% | 22.4% | 30.0% | 38.9% |
+| Chunked | before | 3.0% | 7.7% | **39.0%** | **46.4%** |
+| Chunked | both | 12.0% | 25.4% | 32.0% | 45.2% |
 
-**Analysis**: Query-both is the best configuration across the board. Placing the question both before and after documents gives +5% EM over after-only for standard attention LoRA (38% vs 33%), and +2% for chunked (33% vs 31%). The question-before copy helps documents attend to the query during processing, while the question-after copy ensures the model has the query nearby at generation time. Query-before alone fails completely (1-3% EM) because the generation position is too far from the question.
+**Analysis**: Query-both is the best for standard attention LoRA (41% EM), but query-before works surprisingly well with chunked attention LoRA (39% EM). With chunked attention, documents can't attend to each other, so placing the query before gives each document direct access to the question — nearly as effective as having it on both sides. Standard+both LoRA still leads overall. Fine-tuning provides the biggest gains for chunked+before (+36% EM).
