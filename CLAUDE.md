@@ -48,6 +48,7 @@ python scripts/evaluate_contradiction.py --eval-data data/contradiction_eval_n10
   - Base models use HELMET prompt format + 2 few-shot demos (standard HELMET eval)
   - Eval scripts auto-enforce this: when `use_alpaca=True`, shots is set to 0
   - Any new features added to eval prompts must also be added to training data generation, and vice versa
+- **No intermediate checkpoints by default.** Training configs should use `saves_per_epoch: 0` and `save_strategy: "no"` to avoid slow checkpoint saves during training. Axolotl saves the final HF model weights to `output_dir` at the end automatically. Only enable intermediate checkpoints if explicitly requested.
 
 ## User Preferences
 
