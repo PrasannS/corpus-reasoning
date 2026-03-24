@@ -244,3 +244,16 @@ Base model uses HELMET prompt format; LoRA models use alpaca prompt format (matc
 | Chunked | both | 12.0% | 25.4% | 32.0% | 45.2% |
 
 **Analysis**: Query-both is the best for standard attention LoRA (41% EM), but query-before works surprisingly well with chunked attention LoRA (39% EM). With chunked attention, documents can't attend to each other, so placing the query before gives each document direct access to the question — nearly as effective as having it on both sides. Standard+both LoRA still leads overall. Fine-tuning provides the biggest gains for chunked+before (+36% EM).
+
+## Experiment 5: Scaled-up ablation (50k NQ, 500 eval samples)
+
+Same query position × attention type ablation as Experiment 4, but with 50k training examples and evaluated on 500 samples for more reliable estimates.
+
+*Results pending — SLURM jobs in progress (job 107789).*
+
+**Configs**: `configs/nq_{std,chunked}_q{before,after,both}_lora.yml`
+
+```bash
+# Run via SLURM
+sbatch scripts/run_batch_part2.sh
+```

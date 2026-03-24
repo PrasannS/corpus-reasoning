@@ -26,15 +26,46 @@ Long-context training and evaluation pipeline for language models. Fine-tunes mo
 ```bash
 # Generate data (use corpus-reasoning-eval env)
 python scripts/generate_nq_training_data.py --num-examples 1000 --num-docs 20
-python scripts/generate_contradiction_data.py --num-claims 100 --num-contradictions 3
+python scripts/generate_hotpotqa_data.py --num-examples 5000 --num-docs 20 --question-type bridge
+python scripts/convert_to_qboth.py data/input.jsonl data/output_qboth.jsonl
+python scripts/convert_to_qbefore.py data/input.jsonl data/output_qbefore.jsonl
 
-# Train (use corpus-reasoning env)
+# Train - standard attention (use corpus-reasoning env)
 bash scripts/train.sh configs/nq_rag_lora_multigpu.yml
 
-# Evaluate (use corpus-reasoning-eval env)
+# Train - chunked attention (use corpus-reasoning env)
+accelerate launch --num_processes 4 scripts/train_chunked_fast.py configs/nq_rag_chunked_qboth_fast.yml
+
+# Evaluate - standard attention (use corpus-reasoning-eval env)
 python scripts/evaluate_helmet_rag.py --datasets nq --num-docs 20
-python scripts/evaluate_contradiction.py --eval-data data/contradiction_eval_n100_k3.jsonl
+python scripts/evaluate_helmet_rag.py --datasets hotpotqa --num-docs 20 --query-position both --lora-path ./outputs/model
+
+# Evaluate - chunked attention (use corpus-reasoning-eval env)
+python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --query-position both --lora-path ./outputs/model
 ```
+
+## SLURM (Batch Jobs)
+
+The cluster has 8x A100 GPUs per node on the `lambda` partition. Use sbatch for batch experiments.
+
+```bash
+# Submit a batch job
+sbatch scripts/run_batch_part1.sh
+
+# Check job status
+squeue -u $(whoami)
+sacct -j JOBID --format=JobID,State,ExitCode,Elapsed
+
+# Monitor logs
+tail -f outputs/batch_JOBID.log
+```
+
+**Key sbatch conventions:**
+- Use absolute paths in sbatch scripts (SLURM copies scripts to temp dirs, so `BASH_SOURCE` won't resolve correctly). Set `PROJECT_DIR="/accounts/projects/sewonm/prasann/projects/corpus-reasoning"` explicitly.
+- Use `eval "$(conda shell.bash hook)"` before `conda activate` in sbatch scripts.
+- Request 4 GPUs per job to run 2 jobs in parallel (8 GPU total limit).
+- Standard training uses `accelerate launch -m axolotl.cli.train`; chunked uses `accelerate launch scripts/train_chunked_fast.py`.
+- Batch scripts go in `scripts/` (e.g., `run_batch_part1.sh`, `run_hotpotqa_k50.sh`).
 
 ## Conventions
 
