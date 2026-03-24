@@ -69,6 +69,13 @@ def build_example(example, distractor_pool, num_docs, doc_order, gold_position,
         rng: Random instance.
         use_titles: Whether to include document titles.
     """
+    if num_docs == 0:
+        return {
+            "instruction": INSTRUCTION,
+            "input": f"Question: {example['question']}",
+            "output": example["answer"],
+        }
+
     all_docs = paragraphs_from_context(example["context"])
     supporting_titles = get_supporting_titles(example)
 
@@ -148,9 +155,14 @@ def main():
     parser.add_argument("--num-eval", type=int, default=500,
                         help="Number of eval examples (only used with --split both)")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--no-context", action="store_true",
+                        help="Generate closed-book examples (no documents, just question)")
     args = parser.parse_args()
 
-    assert args.num_docs >= 2, "Need at least 2 docs for multi-hop QA"
+    if args.no_context:
+        args.num_docs = 0
+    elif args.num_docs < 2:
+        parser.error("Need at least 2 docs for multi-hop QA (or use --no-context)")
     rng = random.Random(args.seed)
 
     if args.split == "both":
@@ -184,18 +196,20 @@ def main():
         selected = indices[:n]
 
         # Build external distractor pool from non-selected examples
-        pool_indices = indices[n:n + n * 3] if n < len(ds) else indices
         distractor_pool = []
-        for idx in pool_indices:
-            ex = ds[idx]
-            sup_titles = get_supporting_titles(ex)
-            for doc in paragraphs_from_context(ex["context"]):
-                if doc["title"] not in sup_titles:
-                    distractor_pool.append(doc)
-        rng.shuffle(distractor_pool)
-        print(f"  Distractor pool: {len(distractor_pool)} paragraphs")
+        if args.num_docs > 0:
+            pool_indices = indices[n:n + n * 3] if n < len(ds) else indices
+            for idx in pool_indices:
+                ex = ds[idx]
+                sup_titles = get_supporting_titles(ex)
+                for doc in paragraphs_from_context(ex["context"]):
+                    if doc["title"] not in sup_titles:
+                        distractor_pool.append(doc)
+            rng.shuffle(distractor_pool)
+            print(f"  Distractor pool: {len(distractor_pool)} paragraphs")
 
-        print(f"  Generating {n} examples (docs={args.num_docs}, type={args.question_type}, "
+        ctx_label = "no-context" if args.num_docs == 0 else f"docs={args.num_docs}"
+        print(f"  Generating {n} examples ({ctx_label}, type={args.question_type}, "
               f"order={args.doc_order}, gold_pos={args.gold_position})...")
         examples = []
         for i in selected:
@@ -205,7 +219,7 @@ def main():
             examples.append(ex)
 
         # Build filename
-        flags = [f"k{args.num_docs}", args.doc_order]
+        flags = ["nocontext"] if args.num_docs == 0 else [f"k{args.num_docs}", args.doc_order]
         if args.question_type != "all":
             flags.append(args.question_type)
         if args.level != "all":

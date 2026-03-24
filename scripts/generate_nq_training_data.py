@@ -76,6 +76,14 @@ def precompute_distractor_chunks(distractors, use_titles=True):
 
 def build_example(sample, distractors, num_docs, gold_position, rng,
                   use_titles=True, split_docs=False, precomputed_chunks=None):
+    if num_docs == 0:
+        # No-context (closed-book) mode
+        return {
+            "instruction": INSTRUCTION,
+            "input": f"Question: {sample['question']}",
+            "output": sample["answer"],
+        }
+
     gold_text = sample["context"]
     gold_title = make_title(gold_text) if use_titles else None
 
@@ -137,7 +145,12 @@ def main():
                         help="Omit document titles to avoid train/eval title mismatch")
     parser.add_argument("--split-docs", action="store_true",
                         help="Split documents into ~450-char chunks to match eval doc lengths")
+    parser.add_argument("--no-context", action="store_true",
+                        help="Generate closed-book examples (no documents, just question)")
     args = parser.parse_args()
+
+    if args.no_context:
+        args.num_docs = 0
 
     rng = random.Random(args.seed)
     print(f"Loading tilyupo/nq_cqa ({args.split})...")
@@ -178,7 +191,10 @@ def main():
         if (idx + 1) % 500 == 0:
             print(f"  {idx + 1}/{n} examples generated")
 
-    path = f"{args.output_dir}/nq_train_k{args.num_docs}_{args.gold_position}_{n}{flags_str}.jsonl"
+    if args.no_context:
+        path = f"{args.output_dir}/nq_train_nocontext_{n}{flags_str}.jsonl"
+    else:
+        path = f"{args.output_dir}/nq_train_k{args.num_docs}_{args.gold_position}_{n}{flags_str}.jsonl"
     save_jsonl(path, examples)
     print_dataset_stats(examples, "Train", path)
 
