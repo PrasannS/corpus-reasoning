@@ -54,9 +54,17 @@ python scripts/evaluate_helmet_rag.py --datasets hotpotqa --num-docs 20 --query-
 | LoRA finetuned (2.5k ex, 1ep) | 47.0% | 52.0% | 59.1% |
 | LoRA finetuned (73k ex, 1ep) | **52.0%** | **58.0%** | **66.7%** |
 
+### No-context (closed-book) finetuning baseline
+
+| Setting | EM | SubEM | F1 |
+|---------|-----|-------|-----|
+| Base model (no context) | 6.0% | 13.0% | 9.9% |
+| No-context LoRA (2.5k ex) | 2.0% | 13.0% | 8.7% |
+
 ### Notes
 
 - Full fine-tuning (lr=1e-5, 1 epoch) collapsed to 1% EM — LoRA is much more stable for this data size.
 - Few-shot demos provided no benefit for the base model on this task.
 - LoRA roughly doubles base model performance (23% → 47% EM).
 - Scaling from 2.5k → 73k examples gives +5 EM / +7.6 F1. Most gains come from the first 2.5k examples (diminishing returns).
+- No-context finetuning does not improve closed-book performance — gains from context-based training come from learning to use the documents, not memorizing answers.
