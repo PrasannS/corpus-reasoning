@@ -3,10 +3,13 @@
 Loads tilyupo/nq_cqa, places 1 gold document among N-1 distractors using HELMET's
 passage template. Output is alpaca format for Axolotl training.
 
+By default generates retrieval task (output relevant document ID). Use --no-retrieval
+for the original QA task (output answer text).
+
 Usage:
     python scripts/generate_nq_training_data.py --num-examples 1000 --num-docs 20
+    python scripts/generate_nq_training_data.py --num-examples 1000 --num-docs 20 --no-retrieval
     python scripts/generate_nq_training_data.py --num-examples 5000 --num-docs 100 --gold-position random
-    python scripts/generate_nq_training_data.py --num-examples 2500 --num-docs 20 --no-titles --split-docs
 """
 
 import argparse
@@ -17,9 +20,16 @@ from lib.io import save_jsonl, print_dataset_stats
 
 PASSAGE_TEMPLATE = "Document (Title: {title}): {text}"
 PASSAGE_TEMPLATE_NO_TITLE = "Document: {text}"
+PASSAGE_TEMPLATE_ID = "Document [{id}] (Title: {title}): {text}"
+PASSAGE_TEMPLATE_NO_TITLE_ID = "Document [{id}]: {text}"
 INSTRUCTION = (
     "Use the given documents to write a concise and short answer to the question. "
     "Write your answer in the following format:\nAnswer: [answer]"
+)
+RETRIEVAL_INSTRUCTION = (
+    "Use the given documents to identify which document is most relevant to "
+    "answering the question.\n"
+    "Write your answer in the following format:\nRelevant Document: [id]"
 )
 
 
@@ -56,8 +66,12 @@ def split_into_chunks(text, target_len=450):
     return chunks
 
 
-def format_doc(text, title=None, use_titles=True):
-    """Format a document with or without title."""
+def format_doc(text, title=None, use_titles=True, doc_id=None):
+    """Format a document with or without title, optionally with numeric ID."""
+    if doc_id is not None:
+        if use_titles and title:
+            return PASSAGE_TEMPLATE_ID.format(id=doc_id, title=title, text=text)
+        return PASSAGE_TEMPLATE_NO_TITLE_ID.format(id=doc_id, text=text)
     if use_titles and title:
         return PASSAGE_TEMPLATE.format(title=title, text=text)
     return PASSAGE_TEMPLATE_NO_TITLE.format(text=text)
@@ -75,11 +89,13 @@ def precompute_distractor_chunks(distractors, use_titles=True):
 
 
 def build_example(sample, distractors, num_docs, gold_position, rng,
-                  use_titles=True, split_docs=False, precomputed_chunks=None):
+                  use_titles=True, split_docs=False, precomputed_chunks=None,
+                  retrieval=False):
     if num_docs == 0:
         # No-context (closed-book) mode
+        instruction = RETRIEVAL_INSTRUCTION if retrieval else INSTRUCTION
         return {
-            "instruction": INSTRUCTION,
+            "instruction": instruction,
             "input": f"Question: {sample['question']}",
             "output": sample["answer"],
         }
@@ -97,38 +113,48 @@ def build_example(sample, distractors, num_docs, gold_position, rng,
             if answer in chunk.lower():
                 gold_chunk = chunk
                 break
-        gold_doc = format_doc(gold_chunk, gold_title, use_titles)
 
         # Use pre-computed distractor chunks
         dist_chunks = precomputed_chunks
         selected = rng.sample(dist_chunks, min(num_docs - 1, len(dist_chunks)))
-        dist_docs = [format_doc(text, title, use_titles) for text, title in selected]
-        # Pad if needed
-        while len(dist_docs) < num_docs - 1:
-            text, title = rng.choice(dist_chunks)
-            dist_docs.append(format_doc(text, title, use_titles))
+        dist_items = list(selected)
+        while len(dist_items) < num_docs - 1:
+            dist_items.append(rng.choice(dist_chunks))
+        # gold_item is (text, title)
+        gold_item = (gold_chunk, gold_title)
     else:
-        gold_doc = format_doc(gold_text, gold_title, use_titles)
-        dist_docs = []
         pool = [d for d in distractors if d["question"] != sample["question"]]
-        for d in rng.sample(pool, min(num_docs - 1, len(pool))):
-            d_title = make_title(d["context"]) if use_titles else None
-            dist_docs.append(format_doc(d["context"], d_title, use_titles))
-        while len(dist_docs) < num_docs - 1:
+        sampled = rng.sample(pool, min(num_docs - 1, len(pool)))
+        dist_items = [(d["context"], make_title(d["context"]) if use_titles else None)
+                      for d in sampled]
+        while len(dist_items) < num_docs - 1:
             d = rng.choice(pool)
-            d_title = make_title(d["context"]) if use_titles else None
-            dist_docs.append(format_doc(d["context"], d_title, use_titles))
+            dist_items.append((d["context"], make_title(d["context"]) if use_titles else None))
+        gold_item = (gold_text, gold_title)
 
-    pos = {"first": 0, "last": len(dist_docs), "middle": len(dist_docs) // 2}.get(
-        gold_position, rng.randint(0, len(dist_docs))
+    pos = {"first": 0, "last": len(dist_items), "middle": len(dist_items) // 2}.get(
+        gold_position, rng.randint(0, len(dist_items))
     )
-    all_docs = dist_docs[:pos] + [gold_doc] + dist_docs[pos:]
+    # Assemble all items: list of (text, title) tuples
+    all_items = dist_items[:pos] + [gold_item] + dist_items[pos:]
+
+    # Format documents (with IDs in retrieval mode)
+    if retrieval:
+        all_docs = [format_doc(text, title, use_titles, doc_id=i + 1)
+                    for i, (text, title) in enumerate(all_items)]
+        gold_id = pos + 1  # 1-indexed
+    else:
+        all_docs = [format_doc(text, title, use_titles)
+                    for text, title in all_items]
+
     context = "\n\n".join(all_docs)
+    instruction = RETRIEVAL_INSTRUCTION if retrieval else INSTRUCTION
+    output = f"[{gold_id}]" if retrieval else sample["answer"]
 
     return {
-        "instruction": INSTRUCTION,
+        "instruction": instruction,
         "input": f"{context}\n\nQuestion: {sample['question']}",
-        "output": sample["answer"],
+        "output": output,
     }
 
 
@@ -147,6 +173,10 @@ def main():
                         help="Split documents into ~450-char chunks to match eval doc lengths")
     parser.add_argument("--no-context", action="store_true",
                         help="Generate closed-book examples (no documents, just question)")
+    parser.add_argument("--retrieval", action="store_true", default=True,
+                        help="Generate retrieval task: output relevant document ID instead of answer (default)")
+    parser.add_argument("--no-retrieval", action="store_false", dest="retrieval",
+                        help="Generate QA task instead of retrieval")
     args = parser.parse_args()
 
     if args.no_context:
@@ -164,6 +194,8 @@ def main():
     distractor_pool = [ds[i] for i in indices[n:n + n * 5] if n < len(ds)] or [ds[i] for i in indices[:n * 5]]
 
     flags = []
+    if args.retrieval:
+        flags.append("retrieval")
     if args.no_titles:
         flags.append("no-titles")
     if args.split_docs:
@@ -179,14 +211,15 @@ def main():
         )
         print(f"  {len(precomputed_chunks)} distractor chunks from {len(distractor_pool)} contexts")
 
-    print(f"Generating {n} examples ({args.num_docs} docs, gold={args.gold_position}, "
+    task_type = "retrieval" if args.retrieval else "QA"
+    print(f"Generating {n} {task_type} examples ({args.num_docs} docs, gold={args.gold_position}, "
           f"titles={'no' if args.no_titles else 'yes'}, split_docs={args.split_docs})...")
     examples = []
     for idx, i in enumerate(selected):
         examples.append(
             build_example(ds[i], distractor_pool, args.num_docs, args.gold_position, rng,
                           use_titles=not args.no_titles, split_docs=args.split_docs,
-                          precomputed_chunks=precomputed_chunks)
+                          precomputed_chunks=precomputed_chunks, retrieval=args.retrieval)
         )
         if (idx + 1) % 500 == 0:
             print(f"  {idx + 1}/{n} examples generated")

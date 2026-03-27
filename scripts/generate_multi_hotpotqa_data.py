@@ -23,10 +23,19 @@ from lib.io import save_jsonl, print_dataset_stats
 
 PASSAGE_TEMPLATE = "Document (Title: {title}): {text}"
 PASSAGE_TEMPLATE_NO_TITLE = "Document: {text}"
+PASSAGE_TEMPLATE_ID = "Document [{id}] (Title: {title}): {text}"
+PASSAGE_TEMPLATE_NO_TITLE_ID = "Document [{id}]: {text}"
 INSTRUCTION = (
     "Use the given documents to answer each of the following questions. "
     "Write a concise and short answer for each question, in order, as a comma-separated list.\n"
     "Write your answer in the following format:\nAnswers: [answer1], [answer2], ..."
+)
+RETRIEVAL_INSTRUCTION = (
+    "Use the given documents to identify which documents are relevant to "
+    "answering each of the following questions. For each question, list the "
+    "relevant document IDs.\n"
+    "Write your answer in the following format:\n"
+    "Relevant Documents: Q1: [id1], [id2]; Q2: [id3], [id4]; ..."
 )
 
 
@@ -46,13 +55,18 @@ def get_supporting_titles(example):
     return set(example["supporting_facts"]["title"])
 
 
-def format_doc(doc, use_titles=True):
+def format_doc(doc, use_titles=True, doc_id=None):
+    if doc_id is not None:
+        if use_titles:
+            return PASSAGE_TEMPLATE_ID.format(id=doc_id, title=doc["title"], text=doc["text"])
+        return PASSAGE_TEMPLATE_NO_TITLE_ID.format(id=doc_id, text=doc["text"])
     if use_titles:
         return PASSAGE_TEMPLATE.format(title=doc["title"], text=doc["text"])
     return PASSAGE_TEMPLATE_NO_TITLE.format(text=doc["text"])
 
 
-def build_multi_example(examples_group, distractor_pool, total_docs, rng, use_titles=True):
+def build_multi_example(examples_group, distractor_pool, total_docs, rng,
+                        use_titles=True, retrieval=False):
     """Build one multi-query training example from N HotpotQA questions.
 
     Args:
@@ -61,6 +75,7 @@ def build_multi_example(examples_group, distractor_pool, total_docs, rng, use_ti
         total_docs: Total number of documents in context (0 = supporting only).
         rng: Random instance.
         use_titles: Whether to include document titles.
+        retrieval: If True, output relevant document IDs per query instead of answers.
 
     Returns:
         dict with instruction, input, output fields, or None if dedup fails.
@@ -70,10 +85,13 @@ def build_multi_example(examples_group, distractor_pool, total_docs, rng, use_ti
     questions = []
     answers = []
     seen_titles = set()
+    # Track per-query supporting titles for retrieval mode
+    per_query_supporting_titles = []
 
     for ex in examples_group:
         all_docs = paragraphs_from_context(ex["context"])
         supporting_titles = get_supporting_titles(ex)
+        per_query_supporting_titles.append(supporting_titles)
 
         # Collect supporting docs (deduplicate by title across queries)
         for d in all_docs:
@@ -115,7 +133,24 @@ def build_multi_example(examples_group, distractor_pool, total_docs, rng, use_ti
     all_paragraphs = all_supporting + distractors
     rng.shuffle(all_paragraphs)
 
-    formatted_docs = [format_doc(d, use_titles) for d in all_paragraphs]
+    # Format documents (with IDs in retrieval mode)
+    if retrieval:
+        formatted_docs = [format_doc(d, use_titles, doc_id=i + 1)
+                          for i, d in enumerate(all_paragraphs)]
+        # Build per-query doc ID output
+        query_parts = []
+        for qi, sup_titles in enumerate(per_query_supporting_titles):
+            gold_ids = sorted(
+                i + 1 for i, d in enumerate(all_paragraphs)
+                if d["title"] in sup_titles
+            )
+            ids_str = ", ".join(f"[{gid}]" for gid in gold_ids)
+            query_parts.append(f"Q{qi + 1}: {ids_str}")
+        output = "; ".join(query_parts)
+    else:
+        formatted_docs = [format_doc(d, use_titles) for d in all_paragraphs]
+        output = ", ".join(answers)
+
     context = "\n\n".join(formatted_docs)
 
     # Build questions block
@@ -123,13 +158,12 @@ def build_multi_example(examples_group, distractor_pool, total_docs, rng, use_ti
         f"Question {i+1}: {q}" for i, q in enumerate(questions)
     )
 
-    # Build answer string
-    answer_str = ", ".join(answers)
+    instruction = RETRIEVAL_INSTRUCTION if retrieval else INSTRUCTION
 
     return {
-        "instruction": INSTRUCTION,
+        "instruction": instruction,
         "input": f"{context}\n\n{questions_block}",
-        "output": answer_str,
+        "output": output,
     }
 
 
@@ -156,6 +190,10 @@ def main():
     parser.add_argument("--num-eval", type=int, default=500,
                         help="Number of eval examples (only used with --split both)")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--retrieval", action="store_true", default=True,
+                        help="Generate retrieval task: output relevant document IDs instead of answers (default)")
+    parser.add_argument("--no-retrieval", action="store_false", dest="retrieval",
+                        help="Generate QA task instead of retrieval")
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
@@ -230,11 +268,14 @@ def main():
         examples = []
         for group in groups:
             ex = build_multi_example(group, distractor_pool, args.total_docs, rng,
-                                     use_titles=not args.no_titles)
+                                     use_titles=not args.no_titles, retrieval=args.retrieval)
             examples.append(ex)
 
         # Build filename
-        flags = [f"n{args.num_queries}"]
+        flags = []
+        if args.retrieval:
+            flags.append("retrieval")
+        flags.append(f"n{args.num_queries}")
         if args.total_docs > 0:
             flags.append(f"k{args.total_docs}")
         else:

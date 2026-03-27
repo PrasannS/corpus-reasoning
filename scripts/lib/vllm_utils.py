@@ -19,20 +19,29 @@ def add_vllm_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--output-file", type=str, default="outputs/eval_results.json")
     parser.add_argument("--enforce-eager", action="store_true",
                         help="Disable torch.compile and CUDA graphs for compatibility")
+    parser.add_argument("--language-model-only", action="store_true",
+                        help="Force text-only mode for multimodal models (e.g. Qwen3.5)")
+    parser.add_argument("--tokenizer", type=str, default=None,
+                        help="Override tokenizer (e.g. use HF model tokenizer for merged checkpoints)")
 
 
 def load_model(args) -> tuple[LLM, LoRARequest | None]:
     """Load vLLM model and optional LoRA adapter from parsed args."""
     enable_lora = bool(args.lora_path)
-    print(f"Loading model: {args.base_model} (enable_lora={enable_lora})")
+    language_model_only = getattr(args, "language_model_only", False)
+    print(f"Loading model: {args.base_model} (enable_lora={enable_lora}, language_model_only={language_model_only})")
+    hf_overrides = {"architectures": ["Qwen3_5ForCausalLM"]} if language_model_only else None
+    tokenizer = getattr(args, "tokenizer", None)
     llm = LLM(
         model=args.base_model,
+        tokenizer=tokenizer,
         enable_lora=enable_lora,
         max_lora_rank=64 if enable_lora else None,
         tensor_parallel_size=args.tensor_parallel_size,
         max_model_len=args.max_model_len,
         gpu_memory_utilization=0.5,
         enforce_eager=getattr(args, "enforce_eager", False),
+        hf_overrides=hf_overrides,
     )
     lora_request = None
     if args.lora_path:

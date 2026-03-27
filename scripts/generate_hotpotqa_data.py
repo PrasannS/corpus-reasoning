@@ -27,9 +27,16 @@ from lib.io import save_jsonl, print_dataset_stats
 # Match HELMET eval format exactly (evaluate_helmet_rag.py lines 21-28)
 PASSAGE_TEMPLATE = "Document (Title: {title}): {text}"
 PASSAGE_TEMPLATE_NO_TITLE = "Document: {text}"
+PASSAGE_TEMPLATE_ID = "Document [{id}] (Title: {title}): {text}"
+PASSAGE_TEMPLATE_NO_TITLE_ID = "Document [{id}]: {text}"
 INSTRUCTION = (
     "Use the given documents to write a concise and short answer to the question. "
     "Write your answer in the following format:\nAnswer: [answer]"
+)
+RETRIEVAL_INSTRUCTION = (
+    "Use the given documents to identify which documents are relevant to "
+    "answering the question. List all relevant document IDs.\n"
+    "Write your answer in the following format:\nRelevant Documents: [id1], [id2]"
 )
 
 
@@ -49,15 +56,19 @@ def get_supporting_titles(example):
     return set(example["supporting_facts"]["title"])
 
 
-def format_doc(doc, use_titles=True):
-    """Format a document dict as a passage string."""
+def format_doc(doc, use_titles=True, doc_id=None):
+    """Format a document dict as a passage string, optionally with numeric ID."""
+    if doc_id is not None:
+        if use_titles:
+            return PASSAGE_TEMPLATE_ID.format(id=doc_id, title=doc["title"], text=doc["text"])
+        return PASSAGE_TEMPLATE_NO_TITLE_ID.format(id=doc_id, text=doc["text"])
     if use_titles:
         return PASSAGE_TEMPLATE.format(title=doc["title"], text=doc["text"])
     return PASSAGE_TEMPLATE_NO_TITLE.format(text=doc["text"])
 
 
 def build_example(example, distractor_pool, num_docs, doc_order, gold_position,
-                  rng, use_titles=True):
+                  rng, use_titles=True, retrieval=False):
     """Build one training example from a HotpotQA question.
 
     Args:
@@ -68,10 +79,12 @@ def build_example(example, distractor_pool, num_docs, doc_order, gold_position,
         gold_position: Where to place supporting docs ("random", "first", "last", "middle").
         rng: Random instance.
         use_titles: Whether to include document titles.
+        retrieval: If True, output relevant document IDs instead of answer.
     """
     if num_docs == 0:
+        instruction = RETRIEVAL_INSTRUCTION if retrieval else INSTRUCTION
         return {
-            "instruction": INSTRUCTION,
+            "instruction": instruction,
             "input": f"Question: {example['question']}",
             "output": example["answer"],
         }
@@ -117,13 +130,27 @@ def build_example(example, distractor_pool, num_docs, doc_order, gold_position,
         pos = pos_map.get(gold_position, rng.randint(0, len(distractors)))
         all_paragraphs = distractors[:pos] + supporting + distractors[pos:]
 
-    formatted_docs = [format_doc(d, use_titles) for d in all_paragraphs]
+    # Format documents (with IDs in retrieval mode)
+    if retrieval:
+        formatted_docs = [format_doc(d, use_titles, doc_id=i + 1)
+                          for i, d in enumerate(all_paragraphs)]
+        # Find supporting doc positions (1-indexed)
+        gold_ids = sorted(
+            i + 1 for i, d in enumerate(all_paragraphs)
+            if d["title"] in supporting_titles
+        )
+        output = ", ".join(f"[{gid}]" for gid in gold_ids)
+    else:
+        formatted_docs = [format_doc(d, use_titles) for d in all_paragraphs]
+        output = example["answer"]
+
     context = "\n\n".join(formatted_docs)
+    instruction = RETRIEVAL_INSTRUCTION if retrieval else INSTRUCTION
 
     return {
-        "instruction": INSTRUCTION,
+        "instruction": instruction,
         "input": f"{context}\n\nQuestion: {example['question']}",
-        "output": example["answer"],
+        "output": output,
     }
 
 
@@ -157,6 +184,10 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--no-context", action="store_true",
                         help="Generate closed-book examples (no documents, just question)")
+    parser.add_argument("--retrieval", action="store_true", default=True,
+                        help="Generate retrieval task: output relevant document IDs instead of answer (default)")
+    parser.add_argument("--no-retrieval", action="store_false", dest="retrieval",
+                        help="Generate QA task instead of retrieval")
     args = parser.parse_args()
 
     if args.no_context:
@@ -209,17 +240,20 @@ def main():
             print(f"  Distractor pool: {len(distractor_pool)} paragraphs")
 
         ctx_label = "no-context" if args.num_docs == 0 else f"docs={args.num_docs}"
-        print(f"  Generating {n} examples ({ctx_label}, type={args.question_type}, "
+        task_type = "retrieval" if args.retrieval else "QA"
+        print(f"  Generating {n} {task_type} examples ({ctx_label}, type={args.question_type}, "
               f"order={args.doc_order}, gold_pos={args.gold_position})...")
         examples = []
         for i in selected:
             ex = build_example(ds[i], distractor_pool, args.num_docs,
                                args.doc_order, args.gold_position, rng,
-                               use_titles=not args.no_titles)
+                               use_titles=not args.no_titles, retrieval=args.retrieval)
             examples.append(ex)
 
         # Build filename
         flags = ["nocontext"] if args.num_docs == 0 else [f"k{args.num_docs}", args.doc_order]
+        if args.retrieval:
+            flags.append("retrieval")
         if args.question_type != "all":
             flags.append(args.question_type)
         if args.level != "all":

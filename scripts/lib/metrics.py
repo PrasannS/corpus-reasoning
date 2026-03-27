@@ -42,6 +42,39 @@ def max_over_answers(metric_fn, prediction: str, answers: list[str]):
     return max(metric_fn(prediction, gt) for gt in answers)
 
 
+def retrieval_exact_match(predicted_ids: set[int], gold_ids: set[int]) -> bool:
+    """True if predicted set exactly equals gold set."""
+    return predicted_ids == gold_ids
+
+
+def retrieval_recall(predicted_ids: set[int], gold_ids: set[int]) -> float:
+    """Fraction of gold documents that were retrieved."""
+    if not gold_ids:
+        return 1.0
+    return len(predicted_ids & gold_ids) / len(gold_ids)
+
+
+def retrieval_precision(predicted_ids: set[int], gold_ids: set[int]) -> float:
+    """Fraction of predicted documents that are gold."""
+    if not predicted_ids:
+        return 0.0
+    return len(predicted_ids & gold_ids) / len(predicted_ids)
+
+
+def retrieval_f1(predicted_ids: set[int], gold_ids: set[int]) -> float:
+    """Harmonic mean of retrieval precision and recall."""
+    p = retrieval_precision(predicted_ids, gold_ids)
+    r = retrieval_recall(predicted_ids, gold_ids)
+    if p + r == 0:
+        return 0.0
+    return (2 * p * r) / (p + r)
+
+
+def parse_doc_ids(text: str) -> set[int]:
+    """Extract document IDs from text like '[3], [7]' or 'Document [3]'."""
+    return set(int(m) for m in re.findall(r'\[(\d+)\]', text))
+
+
 def aggregate(results: list[dict], keys: list[str]) -> dict:
     """Average metric values across results."""
     if not results:

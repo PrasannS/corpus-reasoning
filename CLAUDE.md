@@ -20,13 +20,16 @@ Long-context training and evaluation pipeline for language models. Fine-tunes mo
 - `data/` — Generated datasets (gitignored)
 - `outputs/` — Checkpoints and eval results (gitignored)
 - `results/` — Experiment results and reproduction instructions (checked in)
+- `examples/` — Sample prompts showing exactly what the model sees for each task variant (checked in). Regenerate with `python scripts/generate_examples.py`
 
 ## Common Commands
 
 ```bash
 # Generate data (use corpus-reasoning-eval env)
+# Data generation defaults to retrieval mode (output doc IDs). Use --no-retrieval for QA mode.
 python scripts/generate_nq_training_data.py --num-examples 1000 --num-docs 20
 python scripts/generate_hotpotqa_data.py --num-examples 5000 --num-docs 20 --question-type bridge
+python scripts/generate_multi_hotpotqa_data.py --num-examples 1000 --num-queries 10
 python scripts/convert_to_qboth.py data/input.jsonl data/output_qboth.jsonl
 python scripts/convert_to_qbefore.py data/input.jsonl data/output_qbefore.jsonl
 
@@ -39,6 +42,10 @@ accelerate launch --num_processes 4 scripts/train_chunked_fast.py configs/nq_rag
 # Evaluate - standard attention (use corpus-reasoning-eval env)
 python scripts/evaluate_helmet_rag.py --datasets nq --num-docs 20
 python scripts/evaluate_helmet_rag.py --datasets hotpotqa --num-docs 20 --query-position both --lora-path ./outputs/model
+
+# Evaluate - retrieval tasks (use corpus-reasoning-eval env)
+python scripts/evaluate_retrieval.py --eval-data data/nq_train_k20_random_500_retrieval.jsonl --lora-path ./outputs/model
+python scripts/evaluate_retrieval.py --eval-data data/hotpotqa_eval_k20_shuffled_retrieval_bridge_500.jsonl --lora-path ./outputs/model
 
 # Evaluate - chunked attention (use corpus-reasoning-eval env)
 python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --query-position both --lora-path ./outputs/model
@@ -80,11 +87,13 @@ tail -f outputs/batch_JOBID.log
   - Eval scripts auto-enforce this: when `use_alpaca=True`, shots is set to 0
   - Any new features added to eval prompts must also be added to training data generation, and vice versa
 - **No intermediate checkpoints by default.** Training configs should use `saves_per_epoch: 0` and `save_strategy: "no"` to avoid slow checkpoint saves during training. Axolotl saves the final HF model weights to `output_dir` at the end automatically. Only enable intermediate checkpoints if explicitly requested.
+- **Example prompts**: When adding a new task variant or changing prompt format, add an entry to `scripts/generate_examples.py` and regenerate `examples/`. Each example file shows the full alpaca-wrapped prompt the model sees during training/eval, plus the expected output. This makes it easy to visually verify prompt format correctness.
 
 ## User Preferences
 
 - **Commit to git frequently.** After completing a meaningful unit of work (new script, config, experiment results, bug fix), commit the changes. Don't let work accumulate uncommitted across long sessions.
 - **Always log progress for long-running processes.** When running downloads, extractions, training, or any task that takes more than ~30 seconds, ensure there is a way for the user to monitor progress (e.g., `--progress`, `pv`, `tqdm`, writing to a log file with `tee`, or periodic status lines). Provide the user a `tail -f` command or similar to watch the output. Avoid approaches that flood Claude's context with huge outputs — prefer writing to a file the user can `tail`.
+- **Never suppress command output with `| tail -N` for background commands.** When running commands in the background, always use `tee` to write to a log file so partial output is visible. Piping through `tail` hides all output until the command finishes, making it impossible to monitor progress or see errors early.
 
 ## Known Issues
 
