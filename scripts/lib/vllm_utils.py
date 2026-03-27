@@ -13,10 +13,12 @@ def add_vllm_args(parser: argparse.ArgumentParser) -> None:
     """Add standard vLLM eval arguments to a parser."""
     parser.add_argument("--base-model", type=str, default="NousResearch/Llama-3.2-1B")
     parser.add_argument("--lora-path", type=str, default="", help="Path to LoRA adapter (empty=base only)")
-    parser.add_argument("--max-model-len", type=int, default=4096)
+    parser.add_argument("--max-model-len", type=int, default=32768)
     parser.add_argument("--max-tokens", type=int, default=128, help="Max new tokens")
     parser.add_argument("--tensor-parallel-size", type=int, default=1)
     parser.add_argument("--output-file", type=str, default="outputs/eval_results.json")
+    parser.add_argument("--enforce-eager", action="store_true",
+                        help="Disable torch.compile and CUDA graphs for compatibility")
 
 
 def load_model(args) -> tuple[LLM, LoRARequest | None]:
@@ -30,6 +32,7 @@ def load_model(args) -> tuple[LLM, LoRARequest | None]:
         tensor_parallel_size=args.tensor_parallel_size,
         max_model_len=args.max_model_len,
         gpu_memory_utilization=0.5,
+        enforce_eager=getattr(args, "enforce_eager", False),
     )
     lora_request = None
     if args.lora_path:

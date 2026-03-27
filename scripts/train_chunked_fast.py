@@ -45,13 +45,15 @@ from lib.chunked_attention import (
 # ---------------------------------------------------------------------------
 
 class ChunkedDataset(Dataset):
-    def __init__(self, data_path, tokenizer, max_len, doc_start_id, doc_end_id, query_position="after"):
+    def __init__(self, data_path, tokenizer, max_len, doc_start_id, doc_end_id,
+                 query_position="after", train_on_inputs=False):
         self.examples = load_jsonl(data_path)
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.doc_start_id = doc_start_id
         self.doc_end_id = doc_end_id
         self.query_position = query_position
+        self.train_on_inputs = train_on_inputs
         self.response_marker = tokenizer.encode("### Response:\n", add_special_tokens=False)
 
     def __len__(self):
@@ -79,8 +81,9 @@ class ChunkedDataset(Dataset):
         input_ids = encoding.input_ids.squeeze(0)
 
         labels = input_ids.clone()
-        response_start = self._find_response_start(input_ids)
-        labels[:response_start] = -100
+        if not self.train_on_inputs:
+            response_start = self._find_response_start(input_ids)
+            labels[:response_start] = -100
 
         return {"input_ids": input_ids, "labels": labels}
 
@@ -259,12 +262,6 @@ def main():
     )
     model.resize_token_embeddings(len(tokenizer))
 
-    # Initialize new token embeddings
-    with torch.no_grad():
-        mean_emb = model.get_input_embeddings().weight[:-2].mean(dim=0)
-        model.get_input_embeddings().weight[-2] = mean_emb
-        model.get_input_embeddings().weight[-1] = mean_emb
-
     if cfg.get("gradient_checkpointing", True):
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
 
@@ -272,25 +269,40 @@ def main():
         print("Compiling model with torch.compile...")
         model = torch.compile(model)
 
-    # Apply LoRA
-    lora_config = LoraConfig(
-        r=cfg.get("lora_r", 16),
-        lora_alpha=cfg.get("lora_alpha", 32),
-        lora_dropout=cfg.get("lora_dropout", 0.05),
-        target_modules=cfg.get("lora_target_modules", ["q_proj", "v_proj"]),
-        task_type="CAUSAL_LM",
-    )
-    model = get_peft_model(model, lora_config)
-    model.print_trainable_parameters()
+    # Apply LoRA if configured, otherwise full fine-tuning
+    if cfg.get("adapter") == "lora":
+        lora_config = LoraConfig(
+            r=cfg.get("lora_r", 16),
+            lora_alpha=cfg.get("lora_alpha", 32),
+            lora_dropout=cfg.get("lora_dropout", 0.05),
+            target_modules=cfg.get("lora_target_modules", ["q_proj", "v_proj"]),
+            task_type="CAUSAL_LM",
+        )
+        model = get_peft_model(model, lora_config)
+        model.print_trainable_parameters()
+    else:
+        # Optionally freeze embedding and lm_head layers
+        if cfg.get("freeze_embed", False):
+            for name, param in model.named_parameters():
+                if "embed_tokens" in name or "lm_head" in name:
+                    param.requires_grad = False
+                    print(f"  Frozen: {name} ({param.numel():,} params)")
+        total_params = sum(p.numel() for p in model.parameters())
+        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print(f"Full fine-tuning: {trainable_params:,} / {total_params:,} parameters ({trainable_params/total_params:.1%})")
 
     # Dataset
     query_position = cfg.get("query_position", "after")
     standard_attention = cfg.get("standard_attention", False)
+    train_on_inputs = cfg.get("train_on_inputs", False)
     dataset = ChunkedDataset(
         data_path, tokenizer, cfg.get("sequence_len", 8192),
         doc_start_id, doc_end_id, query_position=query_position,
+        train_on_inputs=train_on_inputs,
     )
     print(f"Loaded {len(dataset)} training examples from {data_path}")
+    if train_on_inputs:
+        print("  Training on ALL tokens (including inputs)")
 
     collator = OptimizedChunkedCollator(
         doc_start_id, doc_end_id, tokenizer.pad_token_id,
@@ -314,9 +326,10 @@ def main():
     seq_len = cfg.get("sequence_len", 8192)
     qpos = query_position[:1]
     attn_tag = "std" if standard_attention else "chunked"
+    adapter_tag = f"r{lora_r}" if cfg.get("adapter") == "lora" else "fullft"
     run_name = (
         cfg.get("wandb_name")
-        or f"fast_{attn_tag}_{data_stem}_q{qpos}_lr{lr}_ep{epochs}_r{lora_r}_seq{seq_len}_ga{grad_acc}"
+        or f"fast_{attn_tag}_{data_stem}_q{qpos}_lr{lr}_ep{epochs}_{adapter_tag}_seq{seq_len}_ga{grad_acc}"
     )
 
     # Training arguments

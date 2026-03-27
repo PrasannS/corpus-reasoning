@@ -39,9 +39,9 @@ deepspeed: configs/deepspeed_zero1.json
 special_tokens:
   pad_token: <|end_of_text|>
 datasets:
-- path: data/hotpotqa_train_k20_shuffled_bridge_72991_qboth.jsonl
+- path: data/hotpotqa_train_k20_shuffled_bridge_5000_qbefore.jsonl
   type: alpaca
   ds_type: json
-dataset_prepared_path: data/prepared_hotpotqa_std_qboth_lora
-output_dir: ./outputs/hotpotqa-std-qboth-lora
-wandb_name: std_qboth_hotpotqa73k_lora
+dataset_prepared_path: data/prepared_hotpotqa_k20_5k_std_qbefore_lora
+output_dir: ./outputs/hotpotqa-k20-5k-std-qbefore-lora
+wandb_name: std_qbefore_hotpotqa5k_k20_lora

@@ -33,14 +33,20 @@ def load_model(args):
     tokenizer = AutoTokenizer.from_pretrained(args.base_model)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    doc_start_id, doc_end_id = setup_tokenizer(tokenizer)
+
+    # Only add chunked attention tokens if not using standard attention
+    if args.standard_attention:
+        doc_start_id, doc_end_id = None, None
+    else:
+        doc_start_id, doc_end_id = setup_tokenizer(tokenizer)
 
     model = AutoModelForCausalLM.from_pretrained(
         args.base_model,
         attn_implementation="sdpa",
         torch_dtype=torch.bfloat16,
     )
-    model.resize_token_embeddings(len(tokenizer))
+    if not args.standard_attention:
+        model.resize_token_embeddings(len(tokenizer))
 
     if args.lora_path:
         from peft import PeftModel
@@ -122,6 +128,18 @@ def load_alpaca_examples(path, max_samples, query_position="after"):
     return result
 
 
+def extract_after_thinking(text):
+    """Extract answer text after </think> tag, if present."""
+    import re
+    match = re.search(r'</think>\s*(.*)', text, re.DOTALL)
+    if match:
+        answer = match.group(1).strip()
+        # Take first line of the answer
+        first_line = answer.split('\n')[0].strip()
+        return first_line if first_line else answer
+    return None
+
+
 def compute_metrics(prediction, answers):
     em = max_over_answers(exact_match, prediction, answers)
     sub_em = max_over_answers(substring_match, prediction, answers)
@@ -132,6 +150,19 @@ def compute_metrics(prediction, answers):
         em = max(em, max_over_answers(exact_match, parsed, answers))
         sub_em = max(sub_em, max_over_answers(substring_match, parsed, answers))
         f1 = max(f1, max_over_answers(token_f1, parsed, answers))
+
+    # Also try extracting answer after </think> tag
+    after_think = extract_after_thinking(prediction)
+    if after_think:
+        em = max(em, max_over_answers(exact_match, after_think, answers))
+        sub_em = max(sub_em, max_over_answers(substring_match, after_think, answers))
+        f1 = max(f1, max_over_answers(token_f1, after_think, answers))
+        # Also try parse_output on the post-thinking text
+        parsed_think = parse_output(after_think)
+        if parsed_think:
+            em = max(em, max_over_answers(exact_match, parsed_think, answers))
+            sub_em = max(sub_em, max_over_answers(substring_match, parsed_think, answers))
+            f1 = max(f1, max_over_answers(token_f1, parsed_think, answers))
 
     return {"exact_match": float(em), "substring_exact_match": float(sub_em), "f1": f1}
 
@@ -160,6 +191,10 @@ def main():
                         help="Use standard causal attention instead of chunked")
     parser.add_argument("--no-titles", action="store_true",
                         help="Omit document titles from prompts")
+    parser.add_argument("--use-alpaca", action="store_true",
+                        help="Force alpaca prompt format (for full FT models without --lora-path)")
+    parser.add_argument("--enable-thinking", action="store_true",
+                        help="Enable Qwen thinking mode: generate <think>...</think> then answer")
     args = parser.parse_args()
 
     if not args.datasets and not args.eval_data:
@@ -169,7 +204,15 @@ def main():
     device = next(model.parameters()).device
 
     newline_id = tokenizer.encode("\n", add_special_tokens=False)
-    stop_ids = {tokenizer.eos_token_id} | set(newline_id)
+    if args.enable_thinking:
+        # Don't stop on newlines when thinking — reasoning contains newlines
+        stop_ids = {tokenizer.eos_token_id}
+        # Increase max tokens to allow room for reasoning
+        if args.max_tokens <= 50:
+            args.max_tokens = 512
+            print(f"  Thinking mode: increased max_tokens to {args.max_tokens}")
+    else:
+        stop_ids = {tokenizer.eos_token_id} | set(newline_id)
 
     all_results = {}
 
@@ -182,7 +225,7 @@ def main():
         eval_sources.append(("alpaca", args.eval_data))
 
     # Use alpaca prompt format for trained models, original HELMET format for base
-    use_alpaca = bool(args.lora_path)
+    use_alpaca = bool(args.lora_path) or args.use_alpaca
     if use_alpaca and args.shots != 0:
         print(f"  Auto-setting shots=0 for trained model (training data has no demos)")
         args.shots = 0
@@ -204,8 +247,11 @@ def main():
         print(f"  {len(examples)} examples")
         results = []
         for ex in tqdm(examples, desc=f"  {label}"):
+            prompt = ex["prompt"]
+            if args.enable_thinking:
+                prompt = prompt + "<think>\n"
             input_ids = tokenizer(
-                ex["prompt"], return_tensors="pt", truncation=True,
+                prompt, return_tensors="pt", truncation=True,
             ).input_ids.to(device)
 
             response = generate_chunked(
@@ -215,7 +261,7 @@ def main():
             )
 
             m = compute_metrics(response, ex["answers"])
-            results.append({"prediction": response.strip()[:300], **m})
+            results.append({"prediction": response.strip()[:500], **m})
 
         metrics = aggregate(results, ["exact_match", "substring_exact_match", "f1"])
         all_results[label] = {"metrics": metrics, "details": results}

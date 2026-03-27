@@ -1,13 +1,13 @@
 #!/bin/bash
-#SBATCH --job-name=hpqa-k50
+#SBATCH --job-name=hpqa-k20-5k
 #SBATCH --partition=lambda
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=100
 #SBATCH --mem=300G
-#SBATCH --time=24:00:00
-#SBATCH --output=outputs/hotpotqa_k50_%j.log
-#SBATCH --error=outputs/hotpotqa_k50_%j.log
+#SBATCH --time=12:00:00
+#SBATCH --output=outputs/hotpotqa_k20_5k_%j.log
+#SBATCH --error=outputs/hotpotqa_k20_5k_%j.log
 set -eo pipefail
 
 PROJECT_DIR="/accounts/projects/sewonm/prasann/projects/corpus-reasoning"
@@ -21,23 +21,22 @@ mkdir -p "$LOG_DIR"
 
 NUM_GPUS=4
 EVAL_SAMPLES=500
-K=50
+K=20
 
 eval "$(conda shell.bash hook)"
 
 for QPOS in before after both; do
-    CONFIG="configs/hotpotqa_k${K}_std_q${QPOS}_lora.yml"
-    OUTPUT_DIR="./outputs/hotpotqa-k${K}-std-q${QPOS}-lora"
-    TRAIN_LOG="$LOG_DIR/train_hotpotqa_k${K}_std_q${QPOS}.log"
-    EVAL_LOG="$LOG_DIR/eval_hotpotqa_k${K}_std_q${QPOS}.log"
-    EVAL_OUTPUT="outputs/hotpotqa_k${K}_std_q${QPOS}_eval.json"
+    CONFIG="configs/hotpotqa_k${K}_5k_std_q${QPOS}_lora.yml"
+    OUTPUT_DIR="./outputs/hotpotqa-k${K}-5k-std-q${QPOS}-lora"
+    TRAIN_LOG="$LOG_DIR/train_hotpotqa_k${K}_5k_std_q${QPOS}.log"
+    EVAL_LOG="$LOG_DIR/eval_hotpotqa_k${K}_5k_std_q${QPOS}.log"
+    EVAL_OUTPUT="outputs/hotpotqa_k${K}_5k_std_q${QPOS}_eval.json"
 
     echo ""
     echo "============================================================"
-    echo "hotpotqa k${K} / std / q${QPOS}"
+    echo "hotpotqa k${K} 5k / std / q${QPOS}"
     echo "============================================================"
 
-    # Skip training if model already exists
     if [ -f "$OUTPUT_DIR/adapter_config.json" ]; then
         echo "  Model already exists at $OUTPUT_DIR, skipping training"
     else
@@ -48,7 +47,6 @@ for QPOS in before after both; do
         echo "  Training complete: $OUTPUT_DIR"
     fi
 
-    # Evaluation
     conda activate corpus-reasoning-eval
     python scripts/evaluate_helmet_rag.py \
         --datasets hotpotqa \
@@ -63,10 +61,10 @@ done
 
 echo ""
 echo "============================================================"
-echo "ALL k${K} RUNS COMPLETE"
+echo "ALL k${K} 5k RUNS COMPLETE"
 echo "============================================================"
 for QPOS in before after both; do
-    EVAL_LOG="$LOG_DIR/eval_hotpotqa_k${K}_std_q${QPOS}.log"
-    echo "--- hotpotqa k${K} / std / q${QPOS} ---"
-    grep -A 4 "^SUMMARY" "$EVAL_LOG" 2>/dev/null || grep "EM:" "$EVAL_LOG" 2>/dev/null || echo "  (no results)"
+    EVAL_LOG="$LOG_DIR/eval_hotpotqa_k${K}_5k_std_q${QPOS}.log"
+    echo "--- hotpotqa k${K} 5k / std / q${QPOS} ---"
+    grep "EM:" "$EVAL_LOG" 2>/dev/null || echo "  (no results)"
 done

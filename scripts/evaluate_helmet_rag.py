@@ -12,10 +12,14 @@ import hashlib
 import random
 import re
 from pathlib import Path
-from vllm import SamplingParams
 from lib.io import load_jsonl, save_results, format_alpaca_prompt
-from lib.vllm_utils import add_vllm_args, load_model, run_inference
 from lib.metrics import exact_match, substring_match, token_f1, max_over_answers, aggregate
+
+try:
+    from vllm import SamplingParams
+    from lib.vllm_utils import add_vllm_args, load_model, run_inference
+except ImportError:
+    SamplingParams = None  # vLLM not available (e.g. training env)
 
 # HELMET-compatible templates
 PASSAGE_TEMPLATE = "Document (Title: {title}): {text}"
@@ -108,6 +112,16 @@ def build_demos(demo_data, sample, shots, no_titles=False):
     return "\n\n".join(texts) + "\n\n" if texts else ""
 
 
+def extract_after_thinking(text):
+    """Extract answer text after </think> tag, if present."""
+    match = re.search(r'</think>\s*(.*)', text, re.DOTALL)
+    if match:
+        answer = match.group(1).strip()
+        first_line = answer.split('\n')[0].strip()
+        return first_line if first_line else answer
+    return None
+
+
 def compute_metrics(prediction, answers):
     em = max_over_answers(exact_match, prediction, answers)
     sub_em = max_over_answers(substring_match, prediction, answers)
@@ -117,6 +131,19 @@ def compute_metrics(prediction, answers):
         em = max(em, max_over_answers(exact_match, parsed, answers))
         sub_em = max(sub_em, max_over_answers(substring_match, parsed, answers))
         f1 = max(f1, max_over_answers(token_f1, parsed, answers))
+
+    # Also try extracting answer after </think> tag
+    after_think = extract_after_thinking(prediction)
+    if after_think:
+        em = max(em, max_over_answers(exact_match, after_think, answers))
+        sub_em = max(sub_em, max_over_answers(substring_match, after_think, answers))
+        f1 = max(f1, max_over_answers(token_f1, after_think, answers))
+        parsed_think = parse_output(after_think)
+        if parsed_think:
+            em = max(em, max_over_answers(exact_match, parsed_think, answers))
+            sub_em = max(sub_em, max_over_answers(substring_match, parsed_think, answers))
+            f1 = max(f1, max_over_answers(token_f1, parsed_think, answers))
+
     return {"exact_match": float(em), "substring_exact_match": float(sub_em), "f1": f1}
 
 
@@ -208,14 +235,27 @@ def main():
                         help="Place question before or after documents")
     parser.add_argument("--no-titles", action="store_true",
                         help="Omit document titles from prompts")
+    parser.add_argument("--use-alpaca", action="store_true",
+                        help="Force alpaca prompt format (for full FT models without --lora-path)")
+    parser.add_argument("--enable-thinking", action="store_true",
+                        help="Enable thinking mode: append <think> to prompt, parse answer after </think>")
     parser.set_defaults(max_tokens=20, output_file="outputs/helmet_rag_results.json")
     args = parser.parse_args()
 
     llm, lora_request = load_model(args)
-    sampling_params = SamplingParams(temperature=0.0, max_tokens=args.max_tokens, stop=["\n"])
+
+    # Thinking mode: don't stop on newlines, increase max_tokens
+    if args.enable_thinking:
+        stop = None
+        if args.max_tokens <= 50:
+            args.max_tokens = 512
+            print(f"  Thinking mode: increased max_tokens to {args.max_tokens}")
+        sampling_params = SamplingParams(temperature=0.0, max_tokens=args.max_tokens)
+    else:
+        sampling_params = SamplingParams(temperature=0.0, max_tokens=args.max_tokens, stop=["\n"])
 
     # Use alpaca prompt format for trained models (LoRA/full FT), original HELMET format for base
-    use_alpaca = bool(args.lora_path) or args.base_model != "NousResearch/Llama-3.2-1B"
+    use_alpaca = bool(args.lora_path) or args.use_alpaca
     # Trained models use 0 shots to match training data format (no demos in training)
     if use_alpaca and args.shots != 0:
         print(f"  Auto-setting shots=0 for trained model (training data has no demos)")
@@ -239,12 +279,14 @@ def main():
 
         print(f"  {len(examples)} examples")
         prompts = [ex["prompt"] for ex in examples]
+        if args.enable_thinking:
+            prompts = [p + "<think>\n" for p in prompts]
         responses = run_inference(llm, prompts, sampling_params, lora_request)
 
         results = []
         for ex, resp in zip(examples, responses):
             m = compute_metrics(resp, ex["answers"])
-            results.append({"question": ex["question"], "prediction": resp.strip()[:300], **m})
+            results.append({"question": ex["question"], "prediction": resp.strip()[:500], **m})
 
         metrics = aggregate(results, ["exact_match", "substring_exact_match", "f1"])
         all_results[ds_name] = {"metrics": metrics, "details": results}
