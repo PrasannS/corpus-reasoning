@@ -1,7 +1,7 @@
-"""Convert existing long-context retrieval JSONL into triplets for dense retrieval.
+"""Convert unified-format retrieval JSONL into triplets for dense retrieval.
 
 Takes the same training data used by the long-context models (e.g.,
-hotpotqa_train_k20_shuffled_retrieval_bridge_5000.jsonl) and extracts
+hotpotqa_train_k20_shuffled_bridge_5000.jsonl) and extracts
 (query, positive_doc, negative_doc) triplets, ensuring the retrieval model
 sees the exact same query-document pairs.
 
@@ -12,100 +12,75 @@ pair from the original context.
 Use --max-triplets or adjust epochs to control total training tokens.
 
 Usage:
-    # Full exhaustive triplets
-    python scripts/convert_to_retrieval_triplets.py \
-        data/hotpotqa_train_k20_shuffled_retrieval_bridge_5000.jsonl \
+    python scripts/data/convert_to_retrieval_triplets.py \
+        data/hotpotqa_train_k20_shuffled_bridge_5000.jsonl \
         data/hotpotqa_train_k20_retrieval_triplets.jsonl
 
-    # Subsample to match long-context token budget
-    python scripts/convert_to_retrieval_triplets.py \
-        data/hotpotqa_train_k20_shuffled_retrieval_bridge_5000.jsonl \
+    python scripts/data/convert_to_retrieval_triplets.py \
+        data/hotpotqa_train_k20_shuffled_bridge_5000.jsonl \
         data/hotpotqa_train_k20_retrieval_triplets_50k.jsonl \
         --max-triplets 50000
 """
 
 import argparse
-import json
 import random
-import re
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # scripts/ — for lib.*
-sys.path.insert(0, str(Path(__file__).resolve().parent))  # same subdir — for sibling imports
 
 from lib.io import load_jsonl, save_jsonl
 
 
-def parse_documents_from_input(input_text):
-    """Extract individual documents and question from the formatted input field."""
-    # Split off the question at the end
-    question_match = re.search(r'\n\nQuestion:\s*(.+)$', input_text, re.DOTALL)
-    if question_match:
-        doc_text = input_text[:question_match.start()]
-        question = question_match.group(1).strip()
-    else:
-        doc_text = input_text
-        question = ""
-
-    # Locate each document start
-    doc_starts = [m.start() for m in re.finditer(r'Document\s+\[', doc_text)]
-    doc_chunks = []
-    for i, start in enumerate(doc_starts):
-        end = doc_starts[i + 1] if i + 1 < len(doc_starts) else len(doc_text)
-        doc_chunks.append(doc_text[start:end].strip())
-
-    header_pattern = re.compile(
-        r'Document\s+\[(\d+)\]\s*'
-        r'(?:\(Title:\s*(.*?)\)\s*:\s*|\:\s*)'
-        r'(.*)',
-        re.DOTALL
-    )
-
-    docs = []
-    for chunk in doc_chunks:
-        match = header_pattern.match(chunk)
-        if not match:
-            continue
-        doc_id = int(match.group(1))
-        title = match.group(2).strip() if match.group(2) else None
-        text = match.group(3).strip()
-        # Format as "Title: text" to match retrieval model input
-        if title:
-            full_text = f"{title}: {text}"
-        else:
-            full_text = text
-        docs.append({"id": doc_id, "full_text": full_text})
-
-    return docs, question
+def doc_to_text(doc):
+    """Format a document dict as 'Title: text' for the retrieval model."""
+    title = doc.get("title")
+    if title:
+        return f"{title}: {doc['text']}"
+    return doc["text"]
 
 
 def convert_to_triplets(examples, rng, max_triplets=None):
-    """Convert long-context retrieval examples to exhaustive triplets.
+    """Convert unified-format examples to exhaustive (query, pos, neg) triplets.
 
-    Each example has a query, gold doc IDs, and a set of documents.
-    Generates one triplet per (gold_doc, distractor) pair.
+    Each example has documents, queries, and gold_doc_indices.
+    For single-query examples, generates one triplet per (gold_doc, distractor) pair.
+    For multi-query examples, generates triplets per query.
     """
     triplets = []
 
     for ex in examples:
-        docs, question = parse_documents_from_input(ex["input"])
-        gold_ids = set(int(m) for m in re.findall(r'\[(\d+)\]', ex["output"]))
+        documents = ex["documents"]
+        queries = ex["queries"]
+        gold_indices = ex["gold_doc_indices"]
 
-        if not docs or not question or not gold_ids:
+        if not documents or not queries:
             continue
 
-        doc_by_id = {d["id"]: d["full_text"] for d in docs}
-        gold_docs = [(did, doc_by_id[did]) for did in sorted(gold_ids) if did in doc_by_id]
-        distractor_docs = [(did, doc_by_id[did]) for did in sorted(doc_by_id.keys())
-                           if did not in gold_ids]
+        # Normalize gold_indices to per-query lists
+        if queries and gold_indices:
+            if isinstance(gold_indices[0], list):
+                # Multi-query: gold_indices is already per-query
+                per_query_gold = gold_indices
+            else:
+                # Single-query: one flat list of gold indices
+                per_query_gold = [gold_indices]
 
-        for _gid, gold_text in gold_docs:
-            for _did, dist_text in distractor_docs:
-                triplets.append({
-                    "query": question,
-                    "positive": gold_text,
-                    "negative": dist_text,
-                })
+        for qi, query in enumerate(queries):
+            if qi >= len(per_query_gold):
+                continue
+            gold_set = set(per_query_gold[qi])
+            gold_docs = [(i, doc_to_text(documents[i])) for i in sorted(gold_set)
+                         if i < len(documents)]
+            distractor_docs = [(i, doc_to_text(documents[i]))
+                               for i in range(len(documents)) if i not in gold_set]
+
+            for _gid, gold_text in gold_docs:
+                for _did, dist_text in distractor_docs:
+                    triplets.append({
+                        "query": query,
+                        "positive": gold_text,
+                        "negative": dist_text,
+                    })
 
     rng.shuffle(triplets)
     if max_triplets and len(triplets) > max_triplets:
@@ -116,9 +91,9 @@ def convert_to_triplets(examples, rng, max_triplets=None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert long-context retrieval JSONL to dense retrieval triplets")
+        description="Convert unified-format JSONL to dense retrieval triplets")
     parser.add_argument("input_file", type=str,
-                        help="Input JSONL (e.g., hotpotqa_train_k20_shuffled_retrieval_bridge_5000.jsonl)")
+                        help="Input unified-format JSONL")
     parser.add_argument("output_file", type=str,
                         help="Output triplet JSONL")
     parser.add_argument("--max-triplets", type=int, default=None,
