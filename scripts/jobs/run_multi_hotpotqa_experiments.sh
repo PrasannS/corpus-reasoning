@@ -60,7 +60,7 @@ for N in "${QUERY_COUNTS[@]}"; do
     fi
 
     echo "  [n=$N] Generating $TRAIN_SIZE examples..."
-    python scripts/data/generate_multi_hotpotqa_data.py \
+    python scripts/data/generate_hotpotqa_data.py \
         --num-examples "$TRAIN_SIZE" \
         --num-queries "$N" \
         --total-docs "$TOTAL_DOCS" \

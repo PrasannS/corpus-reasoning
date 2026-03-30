@@ -13,8 +13,9 @@ import re
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # scripts/ — for lib.*
 from lib.io import ALPACA_TEMPLATE, load_jsonl, format_alpaca_prompt, insert_dummy_tokens
+from lib.data_format import build_prompt
 from lib.prompts import (
     PASSAGE_TEMPLATE,
     QA_INSTRUCTION, MULTI_QA_INSTRUCTION,
@@ -37,9 +38,27 @@ def count_docs(input_text):
 
 
 def format_train_example(ex):
-    """Format a training example using alpaca template (matches Axolotl training)."""
+    """Format a training example using alpaca template (matches Axolotl training).
+
+    Supports both unified format (documents/queries) and legacy (instruction/input/output).
+    """
+    if "documents" in ex:
+        return build_prompt(ex, task="qa", use_alpaca=True)
     prompt = format_alpaca_prompt(ex["instruction"], ex["input"])
     return prompt, ex["output"]
+
+
+def fmt_unified(task="retrieval", query_position="after", before_dummy=0, after_dummy=0):
+    """Return a formatter function for unified-format examples."""
+    def _fmt(ex):
+        if "documents" in ex:
+            return build_prompt(ex, task=task, query_position=query_position,
+                                before_dummy=before_dummy, after_dummy=after_dummy,
+                                use_alpaca=True)
+        # Fallback for legacy format
+        prompt = format_alpaca_prompt(ex["instruction"], ex["input"])
+        return prompt, ex["output"]
+    return _fmt
 
 
 def format_helmet_eval_example(sample, instruction, query_position="after",

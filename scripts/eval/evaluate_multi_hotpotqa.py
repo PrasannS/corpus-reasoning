@@ -36,7 +36,7 @@ try:
 except ImportError:
     SamplingParams = None
 
-# Must match training data format (generate_multi_hotpotqa_data.py)
+# Must match training data format (generate_hotpotqa_data.py --num-queries N)
 INSTRUCTION = (
     "Use the given documents to answer each of the following questions. "
     "Write a concise and short answer for each question, in order, as a comma-separated list.\n"

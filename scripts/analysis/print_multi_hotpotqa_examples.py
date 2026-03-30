@@ -18,9 +18,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # same subdir — for 
 
 from datasets import load_dataset
 from lib.io import ALPACA_TEMPLATE, format_alpaca_prompt
-from data.generate_multi_hotpotqa_data import (
-    INSTRUCTION, build_multi_example, paragraphs_from_context, get_supporting_titles,
+from data.generate_hotpotqa_data import (
+    build_multi_example, paragraphs_from_context, get_supporting_titles,
 )
+from lib.prompts import MULTI_QA_INSTRUCTION as INSTRUCTION
 
 
 def main():

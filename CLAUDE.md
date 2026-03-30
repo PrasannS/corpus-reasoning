@@ -19,6 +19,7 @@ Long-context training and evaluation pipeline for language models. Fine-tunes mo
 - `scripts/` — All code, organized into subdirectories:
   - `scripts/lib/` — Shared utilities:
     - `io.py` — JSONL I/O, alpaca prompt formatting, dummy token insertion
+    - `data_format.py` — Unified data format spec and `build_prompt()` for converting structured data to prompts
     - `prompts.py` — Centralized prompt templates and instructions (shared across all scripts)
     - `vllm_utils.py` — vLLM model loading and batched generation
     - `metrics.py` — QA metrics (EM, F1) and retrieval metrics (recall, precision)
@@ -39,15 +40,11 @@ Long-context training and evaluation pipeline for language models. Fine-tunes mo
 
 ```bash
 # Generate data (use corpus-reasoning-eval env)
-# Data generation defaults to retrieval mode (output doc IDs). Use --no-retrieval for QA mode.
+# Data is stored in unified structured JSONL (documents as list, formatting at train/eval time).
+# Task type (retrieval/QA), query position, dummy tokens are all specified at train/eval time.
 python scripts/data/generate_nq_training_data.py --num-examples 1000 --num-docs 20
 python scripts/data/generate_hotpotqa_data.py --num-examples 5000 --num-docs 20 --question-type bridge
-python scripts/data/generate_multi_hotpotqa_data.py --num-examples 1000 --num-queries 10
-python scripts/data/convert_query_position.py --mode both data/input.jsonl data/output_qboth.jsonl
-python scripts/data/convert_query_position.py --mode before data/input.jsonl data/output_qbefore.jsonl
-python scripts/data/convert_to_dummy.py data/input.jsonl data/output_bd10.jsonl --before-dummy 10
-python scripts/data/convert_to_dummy.py data/input.jsonl data/output_ad10.jsonl --after-dummy 10
-python scripts/data/convert_to_dummy.py data/input.jsonl data/output_bd10.jsonl --before-dummy 10 --tokenizer Qwen/Qwen3.5-0.8B-Base
+python scripts/data/generate_hotpotqa_data.py --num-queries 10 --num-examples 1000  # multi-query mode
 
 # Train - standard attention (use corpus-reasoning env)
 bash scripts/train/train.sh configs/nq_rag_lora_multigpu.yml
@@ -101,7 +98,7 @@ tail -f outputs/batch_JOBID.log
 
 - Training configs go in `configs/` as YAML (axolotl format). Task-specific params at top, common LoRA/optimizer settings below.
 - Data generation scripts go in `scripts/data/` and write to `data/`
-- Dataset format: JSONL with alpaca-style fields (`instruction`, `input`, `output`)
+- **Unified data format**: JSONL with structured fields (`documents`, `queries`, `answers`, `gold_doc_indices`, `source`). Documents stored as list of `{title, text}` dicts. All formatting (query position, task type, dummy tokens, alpaca wrapping) happens at train/eval time via `lib/data_format.py:build_prompt()`. Legacy alpaca format (`instruction`, `input`, `output`) is still supported for backward compatibility.
 - Shared code goes in `scripts/lib/` (io.py, prompts.py, vllm_utils.py, metrics.py, chunked_attention.py, common.sh)
 - **Experiment tracking**: All experiment results and reproduction instructions go in `results/` as markdown files (one per task). Each file should include: task description, dataset details, config parameters, exact commands to reproduce, and results tables. Update these files whenever a new experiment is run.
 - **Eval prompt must exactly match training prompt.** This means:

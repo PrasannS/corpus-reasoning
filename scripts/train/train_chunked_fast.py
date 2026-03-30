@@ -40,6 +40,7 @@ import json as _json
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # scripts/ — for lib.*
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # same subdir — for sibling imports
 from lib.io import load_jsonl, ALPACA_TEMPLATE
+from lib.data_format import build_prompt
 from lib.chunked_attention import (
     DOC_START, DOC_END, setup_tokenizer, wrap_documents,
     reorder_query, find_chunk_spans,
@@ -52,7 +53,8 @@ from lib.chunked_attention import (
 
 class ChunkedDataset(Dataset):
     def __init__(self, data_path, tokenizer, max_len, doc_start_id, doc_end_id,
-                 query_position="after", train_on_inputs=False):
+                 query_position="after", train_on_inputs=False, task="retrieval",
+                 use_titles=True, before_dummy=0, after_dummy=0):
         self.examples = load_jsonl(data_path)
         self.tokenizer = tokenizer
         self.max_len = max_len
@@ -60,7 +62,13 @@ class ChunkedDataset(Dataset):
         self.doc_end_id = doc_end_id
         self.query_position = query_position
         self.train_on_inputs = train_on_inputs
+        self.task = task
+        self.use_titles = use_titles
+        self.before_dummy = before_dummy
+        self.after_dummy = after_dummy
         self.response_marker = tokenizer.encode("### Response:\n", add_special_tokens=False)
+        # Detect format: unified (has "documents") vs legacy (has "instruction"/"input"/"output")
+        self.unified = "documents" in self.examples[0] if self.examples else False
 
     def __len__(self):
         return len(self.examples)
@@ -81,13 +89,23 @@ class ChunkedDataset(Dataset):
 
     def __getitem__(self, idx):
         ex = self.examples[idx]
-        # Reorder query position (before/after/both documents) if configured
-        input_text = reorder_query(ex["input"], self.query_position)
+
+        if self.unified:
+            # Unified format: build prompt from structured data at training time
+            prompt, output = build_prompt(
+                ex, task=self.task, query_position=self.query_position,
+                use_titles=self.use_titles, before_dummy=self.before_dummy,
+                after_dummy=self.after_dummy, use_alpaca=True,
+            )
+        else:
+            # Legacy alpaca format: instruction/input/output fields
+            input_text = reorder_query(ex["input"], self.query_position)
+            prompt = ALPACA_TEMPLATE.format(instruction=ex["instruction"], input=input_text)
+            output = ex["output"]
+
         # Insert <doc_start>/<doc_end> boundary tokens around each document
-        wrapped_input = wrap_documents(input_text)
-        # Wrap in alpaca template (instruction + input + response prompt)
-        prompt = ALPACA_TEMPLATE.format(instruction=ex["instruction"], input=wrapped_input)
-        full_text = prompt + ex["output"] + self.tokenizer.eos_token
+        prompt = wrap_documents(prompt) if DOC_START not in prompt else prompt
+        full_text = prompt + output + self.tokenizer.eos_token
 
         encoding = self.tokenizer(
             full_text, truncation=True, max_length=self.max_len,
@@ -322,10 +340,15 @@ def main():
     query_position = cfg.get("query_position", "after")
     standard_attention = cfg.get("standard_attention", False)
     train_on_inputs = cfg.get("train_on_inputs", False)
+    task = cfg.get("task", "retrieval")
+    use_titles = not cfg.get("no_titles", False)
+    before_dummy = cfg.get("before_dummy", 0)
+    after_dummy = cfg.get("after_dummy", 0)
     dataset = ChunkedDataset(
         data_path, tokenizer, cfg.get("sequence_len", 8192),
         doc_start_id, doc_end_id, query_position=query_position,
-        train_on_inputs=train_on_inputs,
+        train_on_inputs=train_on_inputs, task=task, use_titles=use_titles,
+        before_dummy=before_dummy, after_dummy=after_dummy,
     )
     print(f"Loaded {len(dataset)} training examples from {data_path}")
     if train_on_inputs:

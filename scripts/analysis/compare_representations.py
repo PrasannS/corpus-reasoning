@@ -94,7 +94,6 @@ def load_model_pair(base_model_name, lora_path, lora_path_2, tokenizer):
     model_b = model_b.cuda().eval()
     return model_a, model_b, label_a, label_b
 
-
 def prepare_input(ex, tokenizer, query_position, max_len, doc_start_id, doc_end_id):
     """Prepare an example for inference (prompt only, no output)."""
     input_text = reorder_query(ex["input"], query_position)
