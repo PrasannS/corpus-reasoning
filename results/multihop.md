@@ -15,11 +15,11 @@ Multi-hop question answering using HotpotQA bridge questions. Each question requ
 
 ```bash
 # Generate base training data (corpus-reasoning-eval env)
-python scripts/generate_hotpotqa_data.py --num-examples 5000 --num-docs 20 --question-type bridge --doc-order shuffled
+python scripts/data/generate_hotpotqa_data.py --num-examples 5000 --num-docs 20 --question-type bridge --doc-order shuffled
 
 # Convert to query-before / query-both formats
-python scripts/convert_to_qbefore.py data/input.jsonl data/output_qbefore.jsonl
-python scripts/convert_to_qboth.py data/input.jsonl data/output_qboth.jsonl
+python scripts/data/convert_to_qbefore.py data/input.jsonl data/output_qbefore.jsonl
+python scripts/data/convert_to_qboth.py data/input.jsonl data/output_qboth.jsonl
 ```
 
 ## Training
@@ -29,20 +29,20 @@ python scripts/convert_to_qboth.py data/input.jsonl data/output_qboth.jsonl
 bash scripts/train.sh configs/hotpotqa_std_qboth_lora.yml
 
 # Chunked attention
-accelerate launch --num_processes 4 scripts/train_chunked_fast.py configs/hotpotqa_chunked_qboth_lora.yml
+accelerate launch --num_processes 4 scripts/train/train_chunked_fast.py configs/hotpotqa_chunked_qboth_lora.yml
 
-# Batch runs via SLURM (see scripts/run_batch_part1.sh, run_hotpotqa_k50.sh, etc.)
-sbatch scripts/run_batch_part1.sh
+# Batch runs via SLURM (see scripts/jobs/run_batch_part1.sh, run_hotpotqa_k50.sh, etc.)
+sbatch scripts/jobs/run_batch_part1.sh
 ```
 
 ## Evaluation
 
 ```bash
 # Standard attention (vLLM)
-python scripts/evaluate_helmet_rag.py --datasets hotpotqa --num-docs 20 --query-position both --max-test-samples 500 --lora-path ./outputs/hotpotqa-std-qboth-lora
+python scripts/eval/evaluate_helmet_rag.py --datasets hotpotqa --num-docs 20 --query-position both --max-test-samples 500 --lora-path ./outputs/hotpotqa-std-qboth-lora
 
 # Chunked attention (HF generate with 4D masks)
-python scripts/evaluate_chunked.py --datasets hotpotqa --num-docs 20 --query-position both --max-test-samples 500 --lora-path ./outputs/hotpotqa-chunked-qboth-lora
+python scripts/eval/evaluate_chunked.py --datasets hotpotqa --num-docs 20 --query-position both --max-test-samples 500 --lora-path ./outputs/hotpotqa-chunked-qboth-lora
 ```
 
 ## Results

@@ -80,7 +80,7 @@ Find the `forward()` method in `Qwen3_5GatedDeltaNet` and replace the input proj
 
 ```bash
 # Quick test (5 samples)
-python scripts/evaluate_helmet_rag.py \
+python scripts/eval/evaluate_helmet_rag.py \
     --datasets hotpotqa --num-docs 20 --query-position both \
     --base-model Qwen/Qwen3.5-0.8B-Base \
     --lora-path ./outputs/hotpotqa-std-qboth-qwen-lora \

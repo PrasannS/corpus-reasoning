@@ -47,7 +47,7 @@ These results used a non-alpaca prompt format at eval time and are **no longer c
 
 **No-context baseline** (parametric knowledge only):
 ```bash
-python scripts/evaluate_helmet_rag.py --datasets nq --num-docs 0 --max-test-samples 100
+python scripts/eval/evaluate_helmet_rag.py --datasets nq --num-docs 0 --max-test-samples 100
 ```
 
 ## Experiment 1: 1k examples, 2 epochs, lr=2e-4
@@ -67,7 +67,7 @@ python scripts/evaluate_helmet_rag.py --datasets nq --num-docs 0 --max-test-samp
 **Generate data**:
 ```bash
 conda activate corpus-reasoning-eval
-python scripts/generate_nq_training_data.py --num-examples 1000 --num-docs 20 --gold-position random --output-dir data
+python scripts/data/generate_nq_training_data.py --num-examples 1000 --num-docs 20 --gold-position random --output-dir data
 ```
 
 **Train**:
@@ -80,7 +80,7 @@ accelerate launch --num_processes 4 -m axolotl.cli.train configs/nq_rag_lora_mul
 **Evaluate**:
 ```bash
 conda activate corpus-reasoning-eval
-python scripts/evaluate_helmet_rag.py --base-model NousResearch/Llama-3.2-1B --lora-path outputs/nq-rag-lora --datasets nq --max-test-samples 100 --num-docs 20 --max-model-len 4096 --shots 2 --output-file outputs/nq_rag_lora_eval_results.json
+python scripts/eval/evaluate_helmet_rag.py --base-model NousResearch/Llama-3.2-1B --lora-path outputs/nq-rag-lora --datasets nq --max-test-samples 100 --num-docs 20 --max-model-len 4096 --shots 2 --output-file outputs/nq_rag_lora_eval_results.json
 ```
 
 **Results** (NQ, 20 docs, 100 eval samples, 2-shot):
@@ -112,7 +112,7 @@ python scripts/evaluate_helmet_rag.py --base-model NousResearch/Llama-3.2-1B --l
 **Generate data**:
 ```bash
 conda activate corpus-reasoning-eval
-python scripts/generate_nq_training_data.py --num-examples 10000 --num-docs 20 --gold-position random --output-dir data
+python scripts/data/generate_nq_training_data.py --num-examples 10000 --num-docs 20 --gold-position random --output-dir data
 ```
 
 **Train**:
@@ -147,16 +147,16 @@ Documents attend only within themselves (block-diagonal attention), while query/
 ```bash
 conda activate corpus-reasoning
 export CUDA_HOME=/usr/local/cuda-12.8
-accelerate launch --num_processes 4 scripts/train_chunked.py configs/nq_rag_chunked_lora.yml
+accelerate launch --num_processes 4 scripts/train/train_chunked.py configs/nq_rag_chunked_lora.yml
 ```
 
 **Evaluate**:
 ```bash
 conda activate corpus-reasoning-eval
 # Base model (chunked attention, no LoRA)
-python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --output-file outputs/chunked_eval_nq_k20_base.json
+python scripts/eval/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --output-file outputs/chunked_eval_nq_k20_base.json
 # LoRA fine-tuned (chunked attention)
-python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --lora-path outputs/nq-rag-chunked-lora --output-file outputs/chunked_eval_nq_k20_lora.json
+python scripts/eval/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --lora-path outputs/nq-rag-chunked-lora --output-file outputs/chunked_eval_nq_k20_lora.json
 ```
 
 **Training stats**: 79 steps, ~12 min, final loss 0.075, avg loss 0.725
@@ -201,9 +201,9 @@ accelerate launch --num_processes 4 -m axolotl.cli.train configs/nq_rag_std_qbef
 accelerate launch --num_processes 4 -m axolotl.cli.train configs/nq_rag_std_qboth.yml
 
 # Chunked attention (custom trainer)
-accelerate launch --num_processes 4 scripts/train_chunked.py configs/nq_rag_chunked_qafter.yml
-accelerate launch --num_processes 4 scripts/train_chunked.py configs/nq_rag_chunked_qbefore.yml
-accelerate launch --num_processes 4 scripts/train_chunked.py configs/nq_rag_chunked_qboth.yml
+accelerate launch --num_processes 4 scripts/train/train_chunked.py configs/nq_rag_chunked_qafter.yml
+accelerate launch --num_processes 4 scripts/train/train_chunked.py configs/nq_rag_chunked_qbefore.yml
+accelerate launch --num_processes 4 scripts/train/train_chunked.py configs/nq_rag_chunked_qboth.yml
 ```
 
 **Evaluate**:
@@ -211,16 +211,16 @@ accelerate launch --num_processes 4 scripts/train_chunked.py configs/nq_rag_chun
 conda activate corpus-reasoning-eval
 
 # Standard attention evals (vLLM)
-python scripts/evaluate_helmet_rag.py --datasets nq --num-docs 20 --max-test-samples 100 --output-file outputs/eval_std_qafter_base.json
-python scripts/evaluate_helmet_rag.py --datasets nq --num-docs 20 --max-test-samples 100 --lora-path outputs/nq-rag-std-qafter --output-file outputs/eval_std_qafter_lora.json
-python scripts/evaluate_helmet_rag.py --datasets nq --num-docs 20 --max-test-samples 100 --query-position before --output-file outputs/eval_std_qbefore_base.json
-python scripts/evaluate_helmet_rag.py --datasets nq --num-docs 20 --max-test-samples 100 --query-position before --lora-path outputs/nq-rag-std-qbefore --output-file outputs/eval_std_qbefore_lora.json
+python scripts/eval/evaluate_helmet_rag.py --datasets nq --num-docs 20 --max-test-samples 100 --output-file outputs/eval_std_qafter_base.json
+python scripts/eval/evaluate_helmet_rag.py --datasets nq --num-docs 20 --max-test-samples 100 --lora-path outputs/nq-rag-std-qafter --output-file outputs/eval_std_qafter_lora.json
+python scripts/eval/evaluate_helmet_rag.py --datasets nq --num-docs 20 --max-test-samples 100 --query-position before --output-file outputs/eval_std_qbefore_base.json
+python scripts/eval/evaluate_helmet_rag.py --datasets nq --num-docs 20 --max-test-samples 100 --query-position before --lora-path outputs/nq-rag-std-qbefore --output-file outputs/eval_std_qbefore_lora.json
 
 # Chunked attention evals (HF generate with 4D masks)
-python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --output-file outputs/eval_chunked_qafter_base.json
-python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --lora-path outputs/nq-rag-chunked-qafter --output-file outputs/eval_chunked_qafter_lora.json
-python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --query-position before --output-file outputs/eval_chunked_qbefore_base.json
-python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --query-position before --lora-path outputs/nq-rag-chunked-qbefore --output-file outputs/eval_chunked_qbefore_lora.json
+python scripts/eval/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --output-file outputs/eval_chunked_qafter_base.json
+python scripts/eval/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --lora-path outputs/nq-rag-chunked-qafter --output-file outputs/eval_chunked_qafter_lora.json
+python scripts/eval/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --query-position before --output-file outputs/eval_chunked_qbefore_base.json
+python scripts/eval/evaluate_chunked.py --datasets nq --num-docs 20 --max-test-samples 100 --query-position before --lora-path outputs/nq-rag-chunked-qbefore --output-file outputs/eval_chunked_qbefore_lora.json
 ```
 
 **Training stats** (all ~79 steps, 1 epoch):

@@ -25,7 +25,7 @@ Long-context contradiction detection: given a corpus of N numbered claims, ident
 **Evaluate**:
 ```bash
 conda activate corpus-reasoning-eval
-python scripts/evaluate_contradiction.py \
+python scripts/eval/evaluate_contradiction.py \
     --eval-data data/contradiction_eval_n100_k3.jsonl \
     --max-test-samples 200 \
     --max-model-len 8192 \
@@ -61,7 +61,7 @@ python scripts/evaluate_contradiction.py \
 **Generate data**:
 ```bash
 conda activate corpus-reasoning-eval
-python scripts/generate_contradiction_data.py --num-claims 100 --num-contradictions 3 --num-train 5000 --num-eval 500 --output-dir data
+python scripts/data/generate_contradiction_data.py --num-claims 100 --num-contradictions 3 --num-train 5000 --num-eval 500 --output-dir data
 ```
 
 **Train**:
@@ -74,7 +74,7 @@ accelerate launch --num_processes 4 -m axolotl.cli.train configs/contradiction_l
 **Evaluate**:
 ```bash
 conda activate corpus-reasoning-eval
-python scripts/evaluate_contradiction.py \
+python scripts/eval/evaluate_contradiction.py \
     --eval-data data/contradiction_eval_n100_k3.jsonl \
     --lora-path outputs/contradiction-lora \
     --max-test-samples 200 \
@@ -98,7 +98,7 @@ python scripts/evaluate_contradiction.py \
 
 ## Experiment 3: API models (Gemini 2.5 Pro / Flash)
 
-Evaluate frontier API models on contradiction detection using `scripts/evaluate_contradiction_api.py`. Uses `llm_request_client.py` for parallel async requests with SQLite caching and cost tracking.
+Evaluate frontier API models on contradiction detection using `scripts/eval/evaluate_contradiction_api.py`. Uses `llm_request_client.py` for parallel async requests with SQLite caching and cost tracking.
 
 **Ablation flags**:
 - `--instruction-after`: place task instruction after the corpus (vs before)
@@ -109,7 +109,7 @@ Evaluate frontier API models on contradiction detection using `scripts/evaluate_
 
 ```bash
 conda activate corpus-reasoning-eval
-python scripts/evaluate_contradiction_api.py \
+python scripts/eval/evaluate_contradiction_api.py \
     --eval-data data/contradiction_eval_n100_k3.jsonl \
     --models gemini-2.5-flash,gemini-2.5-pro \
     --max-examples 10 --ablate-all
@@ -128,11 +128,11 @@ python scripts/evaluate_contradiction_api.py \
 
 ```bash
 conda activate corpus-reasoning-eval
-python scripts/evaluate_contradiction_api.py \
+python scripts/eval/evaluate_contradiction_api.py \
     --eval-data data/contradiction_eval_n1000_k3.jsonl \
     --models gemini-2.5-flash,gemini-2.5-pro \
     --max-examples 10
-python scripts/evaluate_contradiction_api.py \
+python scripts/eval/evaluate_contradiction_api.py \
     --eval-data data/contradiction_eval_n1000_k3.jsonl \
     --models gemini-2.5-flash,gemini-2.5-pro \
     --max-examples 10 --instruction-after

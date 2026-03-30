@@ -92,7 +92,7 @@ This repo includes a toy needle-in-a-haystack (NIAH) task where a factual "needl
 ### 1. Generate training data
 
 ```bash
-python scripts/generate_niah_data.py --output-dir data
+python scripts/data/generate_niah_data.py --output-dir data
 ```
 
 Options:
@@ -135,7 +135,7 @@ pip install vllm
 ```bash
 # Run evaluation (compares base model vs. LoRA-finetuned)
 conda activate corpus-reasoning-eval
-python scripts/evaluate_niah.py
+python scripts/eval/evaluate_niah.py
 ```
 
 Options:
@@ -184,7 +184,7 @@ Average context tokens per question (Llama-3 tokenizer, measured over 50 samples
 
 ```bash
 conda activate corpus-reasoning-eval
-python scripts/evaluate_helmet_rag.py \
+python scripts/eval/evaluate_helmet_rag.py \
     --base-model NousResearch/Llama-3.2-1B \
     --datasets nq,triviaqa,hotpotqa,popqa \
     --max-test-samples 100 \

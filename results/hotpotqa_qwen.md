@@ -62,8 +62,8 @@ With k=2 (only the 2 supporting docs, no distractors), the answer is always `[1]
 
 ```bash
 # Generate data (corpus-reasoning-eval env)
-python scripts/generate_hotpotqa_data.py --num-examples 5000 --num-docs 20 --question-type bridge
-python scripts/convert_to_qboth.py data/hotpotqa_train_k20_shuffled_bridge_5000.jsonl data/hotpotqa_train_k20_shuffled_qboth_bridge_5000.jsonl
+python scripts/data/generate_hotpotqa_data.py --num-examples 5000 --num-docs 20 --question-type bridge
+python scripts/data/convert_to_qboth.py data/hotpotqa_train_k20_shuffled_bridge_5000.jsonl data/hotpotqa_train_k20_shuffled_qboth_bridge_5000.jsonl
 
 # LoRA training (corpus-reasoning env)
 bash scripts/train.sh configs/hotpotqa_std_qboth_qwen_lora.yml
@@ -78,8 +78,8 @@ bash scripts/train.sh configs/hotpotqa_std_qboth_qwen_fullft.yml
 
 ```bash
 # Generate data (corpus-reasoning-eval env)
-python scripts/generate_hotpotqa_data.py --num-examples 5000 --num-docs 4 --question-type bridge --split both --num-eval 500
-python scripts/convert_to_qboth.py data/hotpotqa_train_k4_shuffled_retrieval_bridge_5000.jsonl data/hotpotqa_train_k4_shuffled_retrieval_bridge_5000_qboth.jsonl
+python scripts/data/generate_hotpotqa_data.py --num-examples 5000 --num-docs 4 --question-type bridge --split both --num-eval 500
+python scripts/data/convert_to_qboth.py data/hotpotqa_train_k4_shuffled_retrieval_bridge_5000.jsonl data/hotpotqa_train_k4_shuffled_retrieval_bridge_5000_qboth.jsonl
 
 # LoRA training (corpus-reasoning env)
 bash scripts/train.sh configs/hotpotqa_k4_std_qboth_qwen_lora.yml
@@ -88,22 +88,22 @@ bash scripts/train.sh configs/hotpotqa_k4_std_qboth_qwen_lora.yml
 bash scripts/train.sh configs/hotpotqa_k4_std_qboth_qwen_fullft.yml
 
 # Eval — k=4 retrieval (corpus-reasoning-eval env)
-python scripts/evaluate_retrieval.py --eval-data data/hotpotqa_eval_k4_shuffled_retrieval_bridge_500.jsonl \
+python scripts/eval/evaluate_retrieval.py --eval-data data/hotpotqa_eval_k4_shuffled_retrieval_bridge_500.jsonl \
     --base-model Qwen/Qwen3.5-0.8B-Base --lora-path ./outputs/hotpotqa-k4-std-qboth-qwen-lora --enforce-eager
-python scripts/evaluate_retrieval.py --eval-data data/hotpotqa_eval_k4_shuffled_retrieval_bridge_500.jsonl \
+python scripts/eval/evaluate_retrieval.py --eval-data data/hotpotqa_eval_k4_shuffled_retrieval_bridge_500.jsonl \
     --base-model ./outputs/hotpotqa-k4-std-qboth-qwen-fullft --enforce-eager
 
 # Eval — k=20 retrieval (corpus-reasoning-eval env)
-python scripts/evaluate_retrieval.py --eval-data data/hotpotqa_eval_k20_shuffled_retrieval_bridge_500.jsonl \
+python scripts/eval/evaluate_retrieval.py --eval-data data/hotpotqa_eval_k20_shuffled_retrieval_bridge_500.jsonl \
     --base-model Qwen/Qwen3.5-0.8B-Base --lora-path ./outputs/hotpotqa-k4-std-qboth-qwen-lora --enforce-eager
-python scripts/evaluate_retrieval.py --eval-data data/hotpotqa_eval_k20_shuffled_retrieval_bridge_500.jsonl \
+python scripts/eval/evaluate_retrieval.py --eval-data data/hotpotqa_eval_k20_shuffled_retrieval_bridge_500.jsonl \
     --base-model ./outputs/hotpotqa-k4-std-qboth-qwen-fullft --enforce-eager
 
 # Eval — k=20 QA (corpus-reasoning-eval env)
-python scripts/evaluate_helmet_rag.py --datasets hotpotqa --num-docs 20 --query-position both \
+python scripts/eval/evaluate_helmet_rag.py --datasets hotpotqa --num-docs 20 --query-position both \
     --base-model Qwen/Qwen3.5-0.8B-Base --lora-path ./outputs/hotpotqa-k4-std-qboth-qwen-lora \
     --max-test-samples 500 --enforce-eager
-python scripts/evaluate_helmet_rag.py --datasets hotpotqa --num-docs 20 --query-position both \
+python scripts/eval/evaluate_helmet_rag.py --datasets hotpotqa --num-docs 20 --query-position both \
     --base-model ./outputs/hotpotqa-k4-std-qboth-qwen-fullft --max-test-samples 500 --enforce-eager
 ```
 
@@ -113,14 +113,14 @@ python scripts/evaluate_helmet_rag.py --datasets hotpotqa --num-docs 20 --query-
 # Apply vLLM fix first (see results/vllm_qwen35_lora_fix.md)
 
 # Base model (corpus-reasoning-eval env)
-python scripts/evaluate_helmet_rag.py \
+python scripts/eval/evaluate_helmet_rag.py \
     --datasets hotpotqa --num-docs 20 --query-position both \
     --base-model Qwen/Qwen3.5-0.8B-Base \
     --max-test-samples 500 --enforce-eager \
     --output-file outputs/hotpotqa_qwen_std_qboth_base_500eval.json
 
 # LoRA (corpus-reasoning-eval env)
-python scripts/evaluate_helmet_rag.py \
+python scripts/eval/evaluate_helmet_rag.py \
     --datasets hotpotqa --num-docs 20 --query-position both \
     --base-model Qwen/Qwen3.5-0.8B-Base \
     --lora-path ./outputs/hotpotqa-std-qboth-qwen-lora \
@@ -128,7 +128,7 @@ python scripts/evaluate_helmet_rag.py \
     --output-file outputs/hotpotqa_qwen_std_qboth_lora2500_500eval.json
 
 # Full FT (corpus-reasoning-eval env)
-python scripts/evaluate_helmet_rag.py \
+python scripts/eval/evaluate_helmet_rag.py \
     --datasets hotpotqa --num-docs 20 --query-position both \
     --base-model ./outputs/hotpotqa-std-qboth-qwen-fullft \
     --max-test-samples 500 --enforce-eager \

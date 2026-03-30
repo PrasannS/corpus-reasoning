@@ -60,15 +60,15 @@ This tests the model's ability to handle multiple independent retrieval tasks wi
 
 ```bash
 # N=1
-python scripts/generate_multi_hotpotqa_data.py \
+python scripts/data/generate_multi_hotpotqa_data.py \
     --num-examples 5000 --num-queries 1 --total-docs 50 --question-type bridge
 
 # N=5
-python scripts/generate_multi_hotpotqa_data.py \
+python scripts/data/generate_multi_hotpotqa_data.py \
     --num-examples 5000 --num-queries 5 --total-docs 50 --question-type bridge
 
 # N=10
-python scripts/generate_multi_hotpotqa_data.py \
+python scripts/data/generate_multi_hotpotqa_data.py \
     --num-examples 5000 --num-queries 10 --total-docs 50 --question-type bridge
 ```
 
@@ -84,31 +84,31 @@ bash scripts/train.sh configs/multi_hotpotqa_n10_k50_std_lora.yml
 
 ```bash
 # Trained models
-python scripts/evaluate_multi_hotpotqa.py --num-queries 1 --total-docs 50 \
+python scripts/eval/evaluate_multi_hotpotqa.py --num-queries 1 --total-docs 50 \
     --question-type bridge --max-test-samples 200 \
     --lora-path outputs/multi-hotpotqa-n1-k50-std-lora \
     --output-file outputs/multi_hotpotqa_n1_k50_eval.json
 
-python scripts/evaluate_multi_hotpotqa.py --num-queries 5 --total-docs 50 \
+python scripts/eval/evaluate_multi_hotpotqa.py --num-queries 5 --total-docs 50 \
     --question-type bridge --max-test-samples 200 \
     --lora-path outputs/multi-hotpotqa-n5-k50-std-lora \
     --output-file outputs/multi_hotpotqa_n5_k50_eval.json
 
-python scripts/evaluate_multi_hotpotqa.py --num-queries 10 --total-docs 50 \
+python scripts/eval/evaluate_multi_hotpotqa.py --num-queries 10 --total-docs 50 \
     --question-type bridge --max-test-samples 200 \
     --lora-path outputs/multi-hotpotqa-n10-k50-std-lora \
     --output-file outputs/multi_hotpotqa_n10_k50_eval.json
 
 # Base model
-python scripts/evaluate_multi_hotpotqa.py --num-queries 1 --total-docs 50 \
+python scripts/eval/evaluate_multi_hotpotqa.py --num-queries 1 --total-docs 50 \
     --question-type bridge --max-test-samples 200 \
     --output-file outputs/multi_hotpotqa_n1_k50_base_eval.json
 
-python scripts/evaluate_multi_hotpotqa.py --num-queries 5 --total-docs 50 \
+python scripts/eval/evaluate_multi_hotpotqa.py --num-queries 5 --total-docs 50 \
     --question-type bridge --max-test-samples 200 \
     --output-file outputs/multi_hotpotqa_n5_k50_base_eval.json
 
-python scripts/evaluate_multi_hotpotqa.py --num-queries 10 --total-docs 50 \
+python scripts/eval/evaluate_multi_hotpotqa.py --num-queries 10 --total-docs 50 \
     --question-type bridge --max-test-samples 200 \
     --output-file outputs/multi_hotpotqa_n10_k50_base_eval.json
 ```

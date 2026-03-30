@@ -86,15 +86,15 @@ When `train_on_inputs=true`, gradients stabilize but the model learns to predict
 ```bash
 # LoRA baseline (works)
 bash scripts/train.sh configs/nq_rag_std_qboth_notitle.yml
-conda run -n corpus-reasoning-eval python scripts/evaluate_helmet_rag.py \
+conda run -n corpus-reasoning-eval python scripts/eval/evaluate_helmet_rag.py \
     --lora-path outputs/nq-rag-std-qboth-notitle --datasets nq \
     --num-docs 20 --query-position both --no-titles
 
 # Full FT with custom script (doesn't work)
 conda activate corpus-reasoning
-accelerate launch --num_processes 4 scripts/train_chunked_fast.py \
+accelerate launch --num_processes 4 scripts/train/train_chunked_fast.py \
     configs/nq_rag_std_qboth_notitle_fullft_chunked.yml
-conda run -n corpus-reasoning-eval python scripts/evaluate_helmet_rag.py \
+conda run -n corpus-reasoning-eval python scripts/eval/evaluate_helmet_rag.py \
     --base-model outputs/nq-rag-std-qboth-notitle-fullft-chunked --datasets nq \
     --num-docs 20 --query-position both --no-titles
 ```
