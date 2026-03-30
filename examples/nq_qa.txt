@@ -1,0 +1,621 @@
+# NQ question-answering: 20 documents, output is the answer text
+#
+# Train data: data/nq_train_k20_random_2500.jsonl
+# Eval data:  data/data/kilt/nq-dev-multikilt_1000_k20_dep6.jsonl
+# Examples per section: 3
+#
+# This file shows the exact prompt the model sees during training and evaluation.
+# Training uses Axolotl with alpaca format. Eval uses the corresponding eval script
+# with alpaca format + 0 few-shot demos (for trained/finetuned models).
+
+
+################################################################################
+#  TRAINING EXAMPLES (from data/nq_train_k20_random_2500.jsonl)
+#  Formatted by: Axolotl alpaca format (instruction + input -> output)
+################################################################################
+
+================================================================================
+  TRAIN Example 1
+  Documents: 20 | Prompt chars: 23,059 | Output chars: 69
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to write a concise and short answer to the question. Write your answer in the following format:
+Answer: [answer]
+
+### Input:
+Document (Title: Kevin Weekes ( NBC Sports Radio & NHL Radio ) Kenny Albert, Joe Micheletti ( 1): Kevin Weekes ( NBC Sports Radio & NHL Radio ) Kenny Albert, Joe Micheletti ( 1 -- 4 ), Ray Ferraro, Jim Fox ( 5 ), Steve Goldstein Eastern Final Washington Capitals defeated Tampa Bay Lightning, 4 -- 3 Western Final Vegas Golden Knights defeated Winnipeg Jets, 4 -- 1 ← 2017 Stanley Cup Finals 2019 → The 2018 Stanley Cup Finals was the championship series of the National Hockey League 's ( NHL ) 2017 -- 18 season, and the culmination of the 2018 Stanley Cup playoffs. The Eastern Conference champion Washington Capitals defeated the Western Conference champion Vegas Golden Knights four games to one to win their first championship in their 44th season. The Vegas Golden Knights made the Finals in their first season, while this was the second Finals appearance for the Capitals. This was the first Finals series since 2007 where neither team had previously won the Stanley Cup and the third consecutive year in which a Western Conference team made their Finals debut. This was the first Finals since 2014 to require less than six games. Washington captain Alexander Ovechkin was awarded the Conn Smythe Trophy as the most valuable player of the playoffs. The series began on May 28 and ended on June 7. The Vegas Golden
+
+Document (Title: the finale ( edit ) Interviews with Newhart, Pleshette, and director Dick): the finale ( edit ) Interviews with Newhart, Pleshette, and director Dick Martin reveal that the final scene was kept a secret from the cast and most of the crew. A fake ending was written to throw off the tabloids that involved Dick Loudon going to heaven after being hit with a golf ball and talking to God played by George Burns or George C. Scott. Pleshette was kept hidden until her scene was shot. When the scene began, many people in the live audience recognized the set as the bedroom from The Bob Newhart Show and burst into spontaneous applause. Pleshette and Newhart did the scene in one take. In 1991, the cast of The Bob Newhart Show reunited in a primetime special. One of the things they did was analyze Bob 's dream. During the discussion, the Hartleys ' neighbor, Howard Borden ( Bill Daily ), quipped, `` I had a dream like that once. I dreamed I was an astronaut in Florida for five seasons '', while scenes were shown from I Dream of Jeannie, which featured Daily in all five seasons. At the end of the reunion special, Dr. Bob Hartley gets on the elevator only to see three familiar workmen doing repairs in the elevator and one of them says to Bob, `` Hi. I 'm Larry. This is my brother Darryl and this is my other brother
+
+Document (Title: All - time Leaders ( skaters ) ( edit ) Active skaters ( during 2017 -- 18 NHL): All - time Leaders ( skaters ) ( edit ) Active skaters ( during 2017 -- 18 NHL season ) are listed in boldface. Regular season : Points ( edit ) Active NHL player Inducted into the Hockey Hall of Fame Eligible player not yet inducted into the Hockey Hall of Fame Not yet eligible for Hockey Hall of Fame consideration Further information : Point ( ice hockey ) Rank Name Team ( s ) GP Pts PPG Wayne Gretzky EDM, LAK, STL, NYR 1,487 2,857 1.92 Jaromir Jagr PIT, WSH, NYR, PHI, DAL, BOS, NJD, FLA, CGY 1,733 1,921 1.11 Mark Messier EDM, NYR, VAN 1,756 1,887 1.07 Gordie Howe DET, HFD 1,767 1,850 1.05 Ron Francis HFD, PIT, CAR, TOR 1,731 1,798 1.04
+
+Document (Title: Dec - 08 3.25 % 2010 - pres Date of Change Prime Rate 2015 17 - Dec - 15 3.50 %): Dec - 08 3.25 % 2010 - pres Date of Change Prime Rate 2015 17 - Dec - 15 3.50 % 2016 15 - Dec - 16 3.75 % 2017 16 - Mar - 17 4.00 % 15 - Jun - 17 4.25 % 14 - Dec - 17 4.50 % 2018 22 - Mar - 18 4.75 % See also ( edit ) Wall Street Journal Prime rate Federal Reserve References ( edit ) Various editions of the Wall Street Journal External links ( edit ) Money Rates on the Wall Street Journal Retrieved from `` https://en.wikipedia.org/w/index.php?title=Wall_Street_Journal_prime_rate&oldid=843627138 '' Categories : Banking in the United States Financial economics Interest rates The Wall Street Journal Hidden categories : Articles needing additional references from October 2015 All articles needing additional references Talk
+
+Document (Title: throne is determined by descent, gender ( for people born before October 2011): throne is determined by descent, gender ( for people born before October 2011 ), legitimacy, and religion. Under common law, the Crown is inherited by a sovereign 's children or by a childless sovereign 's nearest collateral line. The Bill of Rights 1689 and the Act of Settlement 1701, restrict succession to the throne to the legitimate Protestant descendants of Sophia of Hanover that are in `` communion with the Church of England ''. Spouses of Roman Catholics were disqualified from 1689 until the law was amended in 2015. Protestant descendants of those excluded for being Roman Catholics are eligible. Queen Elizabeth II is the sovereign, and her heir apparent is her eldest son, Charles, Prince of Wales. Next in line after him is Prince William, Duke of Cambridge, the Prince of Wales 's elder son. Third in line is Prince George, the son of the Duke of Cambridge, followed by his sister, Princess Charlotte. Fifth in line is Prince Henry of Wales, the younger son of the Prince of Wales. Sixth in line is Prince Andrew, Duke of York, the Queen 's second - eldest son. Any of the first six in line marrying without the sovereign 's consent would be disqualified from succession. The first four individuals in the line of succession who are over 21, and the sovereign 's consort, may be appointed Counsellors of
+
+Document (Title: Kingdom Number of locations 26 in UK ; 90 international franchises Area served): Kingdom Number of locations 26 in UK ; 90 international franchises Area served Worldwide Products Toys Revenue £ 43 million ( 2011 ) Owner C. Banner Website www.hamleys.com Hamleys is the oldest and largest toy shop in the world and one of the world 's best - known retailers of toys. Founded by William Hamley as `` Noahs Ark '' in High Holborn, London, in 1760, it moved to its current site on Regent Street in 1881. This flagship store is set over seven floors, with more than 50,000 lines of toys on sale. It is considered one of the city 's prominent tourist attractions, receiving around five million visitors each year. The chain has ten other outlets in the United Kingdom and also has more than 60 franchises worldwide. Contents ( hide ) 1 History 2 United Kingdom stores 2.1 Regent Street 2.2 Other UK stores 3 Global stores 4 Website 5 See also 6 References 7 External links History ( edit ) Hamleys is the oldest and largest toy shop in the world
+
+Document (Title: Lamb of God - wikipedia Lamb of God This article is about the religious term): Lamb of God - wikipedia Lamb of God This article is about the religious term. For other uses, see Lamb of God ( disambiguation ). `` Agnus Dei '' redirects here. For other uses, see Agnus Dei ( disambiguation ). Zurbarán Agnus Dei, Prado Museum, c. 1635 - 1640 Adoration of the Mystic Lamb, with gushing blood, detail of the Ghent Altarpiece, Jan van Eyck, c. 1432 Lamb of God ( Greek : Ἀμνὸς τοῦ Θεοῦ, Amnos tou Theou ; Latin : Agnus Deī ( ˈaŋ. nʊs ˈde. iː ) ) is a title for Jesus that appears in the Gospel of John. It appears at John 1 : 29, where John the Baptist sees Jesus and exclaims, `` Behold the Lamb of God who takes away the sin of the world. '' Christian doctrine holds that divine Jesus chose to suffer crucifixion at Calvary as a sign of his full obedience to the will of his divine Father, as an `` agent and servant of God ''. In Christian theology the Lamb of God is viewed as foundational and integral to the message of Christianity. A lion - like lamb that rises to deliver victory after being slain appears several times in the Book of Revelation. It is also referred to
+
+Document (Title: C16α, and C17β positions): C16α, and C17β positions. The name estriol and the abbreviation E3 were derived from the chemical terms estrin ( estra - 1, 3, 5 ( 10 ) - triene ) and triol ( three hydroxyl groups ). History ( edit ) Estriol was discovered in 1930. It was isolated and purified from the urine of pregnant women by Marrian and colleagues. Use in screening ( edit ) Estriol can be measured in maternal blood or urine and can be used as a marker of fetal health and well - being. If levels of unconjugated estriol ( uE3 or free estriol ) are abnormally low in a pregnant woman, this may indicate chromosomal or congenital anomalies like Down syndrome or Edward 's syndrome. It is included as part of the triple test and quadruple test for antenatal screening for fetal anomalies. Because many pathological conditions in a pregnant woman can cause deviations in estriol levels, these screenings are often seen as less definitive of fetal - placental health than a nonstress test. Conditions which can create false positives and false negatives in estriol testing for fetal distress include preeclampsia, anemia, and impaired kidney function. References ( edit ) ^ Jump up to : Kuhl H ( August 2005 ). `` Pharmacology of estrogens and progestogens : influence of different routes of administration ''. Climacteric. 8 Suppl 1 : 3 -- 63. doi : 10.1080
+
+Document (Title: Jean Smart also returning from the first season to star): Jean Smart also returning from the first season to star. They are joined by Jemaine Clement and Hamish Linklater, promoted from guest roles in the first season, and Navid Negahban. A second season of Legion was ordered by FX in March 2017, with filming for the season relocating from Vancouver to California, to take advantage of tax incentives. Production began in September 2017, with practical effects again a priority for the series ' crew. The season features the parasitic villain Amahl Farouk / Shadow King, portrayed by Negahban, searching for his original body after being forced out of Haller 's mind at the end of the first season. The season premiered in Los Angeles on April 2, 2018, before its FX debut on April 3. It will run for 11 episodes. Contents ( hide ) 1 Episodes 2 Cast and characters 2.1 Main 2.2 Recurring 2.3 Notable guests 3 Production 3.1 Development 3.2 Writing 3.3 Casting 3.4 Design 3.5 Filming 3.6 Music 3.7 Shared universe connections 4 Release 4.1 Broadcast 4.2 Marketing 5 Reception 5.1 Ratings 5.2 Critical response 6 References 7 External links
+
+Document (Title: Samothrace `` Winged Victory '' redirects here): Samothrace `` Winged Victory '' redirects here. For other uses, see Winged Victory ( disambiguation ). The Winged Victory of Samothrace or The Winged Nike Year c. 200 -- 190 BC Type Parian marble 244 cm ( 96 in ) Location Louvre, Paris The Winged Victory of Samothrace, also called the Nike of Samothrace, is a marble Hellenistic sculpture of Nike ( the Greek goddess of victory ), that was created about the 2nd century BC. Since 1884, it has been prominently displayed at the Louvre and is one of the most celebrated sculptures in the world. H.W. Janson described it as `` the greatest masterpiece of Hellenistic sculpture '', and it is one of a small number of major Hellenistic statues surviving in the original, rather than Roman copies. Contents 1 Description 2 History 3 2013 -- 14 restoration 4 Assessment, reception and influence 5 Campaign for repatriation 6 Gallery 7 Modern copies and derivative works 8 See also 9 Notes and references 10 Sources 11 External links Description ( edit ) The context of the Winged Victory
+
+Document (Title: Filtration - wikipedia Filtration Jump to : navigation, search This article is): Filtration - wikipedia Filtration Jump to : navigation, search This article is about operation of solid - fluid separation. For the mathematical concept, see filtration ( mathematics ). For the equipment used, see Filter ( disambiguation ). For filtration used in winemaking, see Filtration ( wine ). Diagram of simple filtration : oversize particles in the feed can not pass through the lattice structure of the filter, while fluid and small particles pass through, becoming filtrate. Filtration is any of various mechanical, physical or biological operations that separate solids from fluids ( liquids or gases ) by adding a medium through which only the fluid can pass. The fluid that passes through is called the filtrate. In physical filters oversize solids in the fluid are retained and in biological filters particulates are trapped and ingested and metabolites are retained and removed. However, the separation is not complete ; solids will be contaminated with some fluid and filtrate will contain fine particles ( depending on the pore size, filter thickness and biological activity ). Filtration occurs both in nature and in engineered systems ; there are biological, geological, and industrial forms. For example, in animals
+
+Document (Title: / 41.87167 ; - 87.64750 Area 1 acre ( 0.40 ha ) Built building built in 1856): / 41.87167 ; - 87.64750 Area 1 acre ( 0.40 ha ) Built building built in 1856, institution founded September 18, 1889 Architect Pond and Pond Architectural style Italianate NRHP reference # 66000315 Significant dates Added to NRHP October 15, 1966 Designated NHL June 23, 1965 Designated CL June 12, 1976 Hull House was a settlement house in the United States that was co-founded in 1889 by Jane Addams and Ellen Gates Starr. Located in the Near West Side of Chicago, Illinois, Hull House ( named after the home 's first owner Charles Jerald Hull ) opened to recently arrived European immigrants. By 1911, Hull House had grown to 13 buildings. In 1912 the Hull House complex was completed with the addition of a summer camp, the Bowen Country Club. With its innovative social, educational, and artistic programs, Hull House became the standard bearer for the movement that had grown, by 1920, to almost 500 settlement houses nationally. Most of the Hull House buildings were demolished for the construction of the University of Illinois - Circle Campus in the mid-1960s.
+
+Document (Title: NASDAQ Trading symbol ^ DJI Constituents 30 Type Large cap Weighting method): NASDAQ Trading symbol ^ DJI Constituents 30 Type Large cap Weighting method Price - weighted Website www.djaverages.com The Dow Jones Industrial Average ( DJIA ), or simply the Dow ( / ˈdaʊ / ), is a stock market index that shows how 30 large, publicly owned companies based in the United States have traded during a standard trading session in the stock market. The value of the Dow is not a weighted arithmetic mean and does not represent its component companies ' market capitalization, but rather the sum of the price of one share of stock for each component company. The sum is corrected by a factor which changes whenever one of the component stocks has a stock split or stock dividend, so as to generate a consistent value for the index. It is the second - oldest U.S. market index after the Dow Jones Transportation Average, created by Wall Street Journal editor and Dow Jones & Company co-founder Charles Dow. Currently owned by S&P Dow Jones Indices, which is majority owned by S&P Global, it is the best known of the Dow Averages, of which the first ( non-industrial ) was originally published on February 16, 1885. The averages are named after Dow and one of his business associates, statistician Edward Jones. The
+
+Document (Title: Matching Cards ( 2016 ) Audio Soundtrack ( s ) Ice Age Ice Age : The Meltdown): Matching Cards ( 2016 ) Audio Soundtrack ( s ) Ice Age Ice Age : The Meltdown Ice Age : Dawn of the Dinosaurs Ice Age : Continental Drift Ice Age : Collision Course Ice Age is an American media franchise centering on a group of mammals surviving the Paleolithic ice age. It is produced by Blue Sky Studios, a division of 20th Century Fox, and featuring the voices of Ray Romano, John Leguizamo, Denis Leary, and Chris Wedge. Five films have been released in the series thus far with Ice Age in 2002, Ice Age : The Meltdown in 2006, Ice Age : Dawn of the Dinosaurs in 2009, Ice Age : Continental Drift in 2012, and Ice Age : Collision Course in 2016. It has received some criticism for making no attempt to be scientifically accurate. As of April 2016, the franchise had generated $6 billion in revenue, making it one of the highest - grossing media franchises of all time. Contents ( hide ) 1 Films 1.1 Ice Age ( 2002 ) 1.2 Ice Age : The Meltdown ( 2006 ) 1.3 Ice Age : Dawn of the Dinosaurs ( 2009 ) 1.4 Ice Age
+
+Document (Title: Lucille ( guitar ) - wikipedia Lucille ( guitar ) Jump to : navigation, search B.B): Lucille ( guitar ) - wikipedia Lucille ( guitar ) Jump to : navigation, search B.B. King 's Lucille Lucille is the name B.B. King gave to his guitars. They were usually black Gibson guitars similar to the ES - 345 - 355. Contents ( hide ) 1 The story of Lucille 2 Lucilles through King 's career 2.1 Early Lucilles 2.2 Gibson Lucille 2.3 Gibson Little Lucille 2.4 The 80th Birthday Lucille 3 See also 4 References 5 Further reading The Story of Lucille ( edit ) B.B. King with Lucille. In the winter of 1949, King played at a dance hall in Twist, Arkansas. The hall was heated
+
+Document (Title: 118 9 March 2013 Murrayfield, Edinburgh 18 -- 28 Wales 2013 Six Nations 119 15): 118 9 March 2013 Murrayfield, Edinburgh 18 -- 28 Wales 2013 Six Nations 119 15 March 2014 Millennium Stadium, Cardiff 51 -- 3 Wales 2014 Six Nations 120 15 February 2015 Murrayfield, Edinburgh 23 -- 26 Wales 2015 Six Nations 121 13 February 2016 Millennium Stadium, Cardiff 27 -- 23 Wales 2016 Six Nations 122 25 February 2017 Murrayfield, Edinburgh 29 -- 13 Scotland 2017 Six Nations 123 3 February 2018 Millennium Stadium, Cardiff 34 -- 7 Wales 2018 Six Nations References ( edit ) Jump up ^ WRU Results Archive Archived 2009 - 06 - 21 at the Wayback Machine. Head - to - head records of Tier 1 rugby union national teams Argentina Argentina Australia England France Ireland
+
+Document (Title: -- -- -- -- -- -- -- Local governments : Rural bodies : District councils Block): -- -- -- -- -- -- -- Local governments : Rural bodies : District councils Block panchayats Gram Panchayats Urban bodies : Municipal corporations Municipal councils Nagar panchayats Other countries Atlas Muhamma Panchayat office, Kerala In India, the ' Panchayati Raj generally refers to the system of local self - government in India introduced by a constitutional amendment in 1992, although it is based upon the traditional panchayat system of South Asia. This Panchayati Raj system was formalized in 1992, following a study conducted by a number of Indian committees on various ways of implementing more decentralized administration. The modern Panchayati Raj and its Gram Panchayats are not to be confused with the extra-constitutional Khap Panchayats ( or Caste Panchayats ) found in northern India. In India, the Panchayati Raj now functions as a system of governance in which gram panchayats are the basic units of local administration. The system has three levels : Gram Panchayat ( village level ), Mandal Parishad or Block Samiti or Panchayat Samiti ( block level ), and Zila Parishad ( district level ). It was formalized in 1992 by the 73rd amendment to the Indian Constitution. Currently, the Panchayati Raj
+
+Document (Title: 2018 ) Jay - Z tour chronology 4 : 44 Tour ( 2017 ) On the Run II Tour ( 2018 )): 2018 ) Jay - Z tour chronology 4 : 44 Tour ( 2017 ) On the Run II Tour ( 2018 ) The On the Run II Tour is the second co-headlining stadium tour by American singer Beyoncé and rapper Jay - Z. It was officially announced on March 12, 2018, and began on June 6, 2018 in Cardiff. It is scheduled to end on October 4, 2018 in Seattle. This is their first tour together since On the Run Tour in 2014. On May 31, it was announced via Twitter that R&B duo Chloe x Halle and DJ Khaled would be the opening acts for the North American leg of the tour. Following the show in London on June 16, 2018, the pair released their collaborative album Everything Is Love exclusively on Tidal. The news of the duo 's new album was announced by a showing of the music video for its lead single, `` Apeshit, '' followed by a sign on stage which announced `` ALBUM OUT NOW. '' The release was then shared on the artists ' respective Instagram and Facebook profiles with the artist of the album being dubbed as The Carters. On the same day, the music video for `` Apeshit '', was released on Beyoncé 's official
+
+Document (Title: musical score, action sequences and direction): musical score, action sequences and direction. Contents ( hide ) 1 Plot 2 Cast 2.1 Apes 2.2 Humans 3 Production 3.1 Development 3.2 Casting 3.3 Filming 3.4 Visual effects 4 Influences 5 Soundtrack 5.1 Track listing 6 Release 6.1 Marketing 6.2 Home media 7 Reception 7.1 Box office 7.2 Critical response 8 Future 9 References 10 External links Plot ( edit ) Two years after the U.S. military was called to fight off an increasingly intelligent and dangerous tribe of apes, starting a devastating war between the two species, the apes ' clan, led by the chimpanzee Caesar, are attacked in the woods by a rogue paramilitary faction known as Alpha - Omega, led by a mysterious Colonel. Alpha - Omega also has in its service apes they call `` donkeys '' that had previously followed Koba, a maniacal, human - hating bonobo who led a failed coup against Caesar and started the war after leading a vengeful attack against human survivors in San Francisco. During the attack, the Alpha - Omega soldiers are met by heavy ape resistance, and four soldiers, including a `` donkey '' gorilla named Red, are captured by the apes. Caesar arrives and orders the human soldiers to be
+
+Document (Title: Label Warner Bros): Label Warner Bros. Records Songwriter ( s ) Allan Sherman, Lou Busch, Amilcare Ponchielli Producer ( s ) Jimmy Hilliard Allan Sherman singles chronology `` The Twelve Gifts of Christmas '' ( 1963 ) `` Hello Muddah, Hello Fadduh ( A Letter from Camp ) '' ( 1963 ) `` Hello Muddah, Hello Fadduh ( A Letter from Camp ) ( 1964 Version ) '' ( 1964 ) `` Hello Muddah, Hello Fadduh ( A Letter from Camp ) '' is a novelty song by Allan Sherman and Lou Busch, based on letters of complaint Allan received from his son Robert while Robert attended Camp Champlain in Westport, New York. Contents 1 The song 2 Success 3 Translations 4 See also 5 References and notes 6 External links The song ( edit ) The song is a parody that complains about the fictional `` Camp Granada '' and is set to the tune of Amilcare Ponchielli 's Dance of the Hours. The name derives from the first lines : Hello Muddah, hello Fadduh. Here I am at Camp Granada. Camp is very entertaining. And
+
+Question: what is one point in the stock market
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+the sum of the price of one share of stock for each component company
+
+
+================================================================================
+  TRAIN Example 2
+  Documents: 20 | Prompt chars: 25,280 | Output chars: 20
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to write a concise and short answer to the question. Write your answer in the following format:
+Answer: [answer]
+
+### Input:
+Document (Title: ) A sample of gneiss from the site of the Earth 's oldest dated rocks ( the): ) A sample of gneiss from the site of the Earth 's oldest dated rocks ( the Acasta River area of Canada ). This sample has been dated at 4.03 billion years old. The oldest dated rocks on Earth, as an aggregate of minerals that have not been subsequently broken down by erosion or melted, are more than 4 billion years old, formed during the Hadean Eon of Earth 's geological history. Such rocks are exposed on the Earth 's surface in very few places. Some of the oldest surface rock can be found in the Canadian Shield, Australia, Africa and in a few other old regions around the world. The ages of these felsic rocks are generally between 2.5 and 3.8 billion years. The approximate ages have a margin of error of millions of years. In 1999, the oldest known rock on Earth was dated to 4.031 ± 0.003 billion years, and is part of the Acasta Gneiss of the Slave craton in northwestern Canada. Researchers at McGill University found a rock with a very old model age for extraction from the mantle ( 3.8 to 4.28 billion years ago ) in the Nuvvuagittuq greenstone belt on the coast of Hudson Bay, in northern Quebec ; the true age of these samples is still under debate, and they may actually be closer to 3.8 billion years old. Older than these rocks are crystals of
+
+Document (Title: recognized charity, the tax usually does not apply): recognized charity, the tax usually does not apply. In addition, a maximum amount, varying year by year, can be given by an individual, before and / or upon their death, without incurring federal gift or estate taxes : $5,340,000 for estates of persons dying in 2014 and 2015, $5,450,000 ( effectively $10.90 million per married couple, assuming the deceased spouse did not leave assets to the surviving spouse ) for estates of persons dying in 2016. Because of these exemptions, it is estimated that only the largest 0.2 % of estates in the U.S. will pay the tax. For 2017, the exemption increases to $5.5 million. In 2018, the exemption will double to $11.18 million per taxpayer due to the Tax Cuts and Jobs Act of 2017. Contents 1 Federal estate tax 1.1 The `` gross estate '' 1.2 Deductions and the taxable estate 1.3 Tentative tax 1.4 Credits against tax 1.5 Portability 1.6 Requirements for filing return and paying tax 1.7 Exemptions and tax rates 1.8 Puerto Rico and other U.S. possessions 1.9 Non-residents 1.10 Noncitizen spouse 2 Estate and inheritance taxes at the state level 3 Tax mitigation 4 History 5 Debate 5.1 Arguments in support 5.2 Arguments against 5.3 The
+
+Document (Title: Skeleton J.P): Skeleton J.P. Manoux as the voice of Scooby Braniac Cameos ( edit ) Pat O'Brien The Tasmanian Devil Ruben Studdard Production ( edit ) In June 2002, at the time of the release of Scooby - Doo, Dan Fellman, the president of Warner Bros., confirmed that a sequel was in the works, and was slated for a 2004 release. In March 2003, it was announced that Freddie Prinze Jr., Sarah Michelle Gellar, Neil Fanning, Matthew Lillard and Linda Cardellini would reprise their roles in the sequel. In April 2003, the next month, filming for the sequel began in Vancouver, with Seth Green joining the cast. Reception ( edit ) Box office ( edit ) The film opened March 26, 2004, and grossed $29.4 million ( over 3,312 theaters, $8,888 average ) during its opening weekend, ranking No. 1. It grossed a total of $84.2 million in North America, and went on to earn $181.5 million worldwide, more than $90 million less than the $275.7 million worldwide Scooby - Doo grossed two years earlier. It was the twenty eighth most successful film of 2004, and ranks as the sixth highest grossing film featuring a dog as a major character. The film was released in the United Kingdom on April 2
+
+Document (Title: spruce - fir forest that coats the range 's upper elevations is the largest of its kind): spruce - fir forest that coats the range 's upper elevations is the largest of its kind. The Great Smokies are also home to the densest black bear population in the Eastern United States and the most diverse salamander population outside of the tropics. Along with the Biosphere reserve, the Great Smokies have been designated a UNESCO World Heritage Site. The U.S. National Park Service preserves and maintains 78 structures within the national park that were once part of the numerous small Appalachian communities scattered throughout the range 's river valleys and coves. The park contains five historic districts and nine individual listings on the National Register of Historic Places. The name `` Smoky '' comes from the natural fog that often hangs over the range and presents as large smoke plumes from a distance. This fog is caused by the vegetation exhaling volatile organic compounds, chemicals that have a high vapor pressure and easily form vapors at normal temperature and pressure. As a result of the 2016 Great Smoky Mountains wildfires, the Great Smoky Mountains have received international media coverage. Contents ( hide ) 1 Geography 1.1 Notable peaks 1.2 Climate 2 Geology 3 Flora 3.1 Cove hardwood forest 3.2 Northern hardwood forest 3.3 Spruce - fir forest 3.4 Wildflowers 4 Fauna 5 Ecosystem threats 6 History 6.1 Prehistory
+
+Document (Title: For other uses, see Chaucer ( disambiguation )): For other uses, see Chaucer ( disambiguation ). Geoffrey Chaucer Portrait of Chaucer from the 17th century. c. 1343 London, England ( 1400 - 10 - 25 ) 25 October 1400 ( aged 56 -- 57 ) Resting place Westminster Abbey, London Occupation Author, poet, philosopher, bureaucrat, diplomat Period Late Middle Ages Spouse Philippa Roet Children Elizabeth Chaucer Thomas Chaucer Geoffrey Chaucer ( / ˈtʃɔːsər / ; c. 1343 -- 25 October 1400 ), known as the Father of English literature, is widely considered the greatest English poet of the Middle Ages. He was the first poet to be buried in Poets ' Corner of Westminster Abbey. While he achieved fame during his lifetime as an author, philosopher, and astronomer, composing a scientific treatise on the astrolabe for his ten - year - old son Lewis, Chaucer also maintained an active career in the civil service as a bureaucrat, courtier and diplomat. Among his many works are The Book of the Duchess, The House of Fame, The Legend of Good Women and Troilus and Criseyde.
+
+Document (Title: , the player must pay an extra R2): , the player must pay an extra R2. 50 per board to enter the LOTTO PLUS 2 draw. Odds are the same, while prizes are usually slightly lower. The draw is conducted on Wednesdays and Saturdays on SABC 2 at 20 : 56. PowerBall ( edit ) Powerball and Powerball Plus coupon 2015 - present The PowerBall jackpot draw requires players to pick five main numbers from 1 to 45 and one ' PowerBall ' number from 1 to 20 for an entry fee of R5 per board. Prizes may be won by matching the main numbers, with matches of the PowerBall number winning higher prizes. The top prize of the game is won by matching all five main numbers as well as the PowerBall. Draws take place on Tuesdays and Fridays on E.tv at 21 : 00. After 28 November 2015, odds were as more possibilities to win were introduced. An example of the recent additions were, if the player matched only the Powerball, he or she would win money, while before, that ticket would not win anything. The record prize for any Lottery game in South Africa was in PowerBall at R102, 016,595. This prize was won in the Free State but never collected. The highest claimed prize was also from PowerBall at R91, 068,427 PowerBall PLUS ( edit ) PowerBall PLUS is exactly the same as PowerBall, but gives the
+
+Document (Title: Commander - in - Chief 's trophy - wikipedia Commander - in - Chief 's trophy): Commander - in - Chief 's trophy - wikipedia Commander - in - Chief 's trophy Commander - in - Chief 's Trophy Showing the side of the 2016 winner, Air Force. Air Force Falcons Army Black Knights Navy Midshipmen Originated : 1972 ; 46 years ago ( 1972 ) Current Holder : Army Air Force ( 20 ) 1982 1983 1985 1987 1989 1990 1991 1992 1994 1995 1997 1998 1999 2000 2001 2002 2010 2011 2014 2016 Army ( 7 ) 1972 1977 1984 1986 1988 1996 2017 Navy ( 15 ) 1973 1975 1978 1979 1981 2003 2004 2005 2006 2007 2008 2009 2012 2013 2015 Shared Awards ( 4 ) 1974 1976 1980 1993 Army Navy Air Force Campus locations in the United States The Commander - in - Chief 's Trophy is awarded to each season 's winner of the American college football triangular series among the teams of the U.S. Military Academy ( Army Black Knights ), the U.S. Naval Academy ( Navy Midshipmen )
+
+Document (Title: Lexie Grey, straining his relationship with Derek yet again): Lexie Grey, straining his relationship with Derek yet again. He reveals that he loves Lexie in episodes `` Migration '', `` Flight '', `` Going, Going, Gone '', and `` Remember The Time '' In the show 's ninth season, he dies of injuries sustained in a jet plane crash that also injured or killed several of his colleagues from the hospital. Contents ( hide ) 1 Storylines 2 Development 2.1 Casting and creation 2.2 Characterization 3 Reception 4 References 5 External links Storylines ( edit ) Mark first appears in season two, introduced as a highly respected otolaryngologist sub-specialized in plastic surgery and the childhood best friend of neurosurgeon Derek Shepherd ( Patrick Dempsey ). Derek explains that Mark had an affair with his wife, Addison ( Kate Walsh ) while they were living in New York. Mark travels to Seattle, intent on convincing Addison to return with him, but his offer is rejected and Derek declines to renew their friendship. Mark returns during season three at Addison 's drunken behest, but she again rejects him once sober. Undeterred, Mark sells his successful private practice ( which he previously shared with Derek ) and takes over the plastics program at Seattle Grace Hospital. During Meredith 's morphine rampage,
+
+Document (Title: Mnemonic device for the two theories : a person refusing to work ( `` X '' )): Mnemonic device for the two theories : a person refusing to work ( `` X '' ) and a person cheering the opportunity to work ( `` Y '' ) Theory X and Theory Y are theories of human work motivation and management. They were created by Douglas McGregor while he was working at the MIT Sloan School of Management in the 1950s, and developed further in the 1960s. McGregor 's work was rooted in motivation theory alongside the works of Abraham Maslow, who created the hierarchy of needs. The two theories proposed by McGregor describe contrasting models of workforce motivation applied by managers in human resource management, organizational behavior, organizational communication and organizational development. Theory X explains the importance of heightened supervision, external rewards, and penalties, while Theory Y highlights the motivating role of job satisfaction and encourages workers to approach tasks without direct supervision. Management use of Theory X and Theory Y can affect employee motivation and productivity in different ways, and managers may choose to implement strategies from both theories into their practices. Contents ( hide ) 1 McGregor and Maslow 2 Theory X 3 Theory Y 4 Choosing a management style 5 See also 6 References 7 External links McGregor and Maslow ( edit ) McGregor 's Theory X and Theory Y and Maslow 's hierarchy of needs are both rooted in motivation theory.
+
+Document (Title: ﻿ 51.503 ° N 0.052 ° W ﻿ / 51.503 ; - 0.052 `` Thames foot tunnel '' redirects here): ﻿ 51.503 ° N 0.052 ° W ﻿ / 51.503 ; - 0.052 `` Thames foot tunnel '' redirects here. For other tunnels, see Tunnels underneath the River Thames. Interior of the Thames Tunnel, mid-19th century The Thames Tunnel is an underwater tunnel, built beneath the River Thames in London, connecting Rotherhithe and Wapping. It measures 35 feet ( 11 m ) wide by 20 feet ( 6 m ) high and is 1,300 feet ( 396 m ) long, running at a depth of 75 feet ( 23 m ) below the river surface measured at high tide. It was the first tunnel known to have been constructed successfully underneath a navigable river and was built between 1825 and 1843 using Marc Isambard Brunel 's and Thomas Cochrane 's newly invented tunnelling shield technology, by Brunel and his son Isambard Kingdom Brunel. The tunnel was originally designed for horse - drawn carriages, but was never used for that purpose. Since 2010 it forms part of the London Overground railway network under ownership of Transport for London. Contents ( hide ) 1 History and development 1.1 Construction 1.1. 1 1828 1.1. 2 Re-opening 1.2 Pedestrian usage 1.3 Use as a railway tunnel 1.4 Influence 2 Visiting 2.1 Entrance shaft 3 References
+
+Document (Title: member or members from two - thirds of the states, and a majority of all the): member or members from two - thirds of the states, and a majority of all the states shall be necessary to a choice. And if the House of Representatives shall not choose a President whenever the right of choice shall devolve upon them, before the fourth day of March next following, then the Vice-President shall act as President, as in the case of the death or other constitutional disability of the President. The person having the greatest number of votes as Vice-President, shall be the Vice-President, if such number be a majority of the whole number of Electors appointed, and if no person have a majority, then from the two highest numbers on the list, the Senate shall choose the Vice-President ; a quorum for the purpose shall consist of two - thirds of the whole number of Senators, and a majority of the whole number shall be necessary to a choice. But no person constitutionally ineligible to the office of President shall be eligible to that of Vice-President of the United States. Background ( edit ) Under the original procedure for the Electoral College, as provided in Article II, Section 1, Clause 3, each elector could vote for two persons. The two people chosen by the elector could not both inhabit the same state as that elector. This prohibition was designed to keep electors from voting for two `` favorite sons
+
+Document (Title: Others 0.02 % Distribution of religions Religion ( edit ) Hindus are 88.77 %): Others 0.02 % Distribution of religions Religion ( edit ) Hindus are 88.77 % while Muslims are 9.30 % of the population in Agra district. Hinduism, Islam and Jainism are the major religions in Agra city with 80.68 %, 15.37 % viz. 1.04 % of the population adhering to them ; others are 1.5 %. The Catholic minority is served by its own Metropolitan Archdiocese of Agra. History ( edit ) Origins ( edit ) It is generally accepted that Agra was both an ancient city from the times of the Mahabharata ( see above ) and yet nevertheless Sultan Sikandar Lodī, the Muslim ruler of the Delhi Sultanate, founded Agra in the year 1504. After the Sultan 's death, the city passed on to his son, Sultan Ibrāhīm Lodī. He ruled his Sultanate from Agra until he fell fighting to Mughal Badshah Bābar in the First battle of Panipat fought in 1526. Mughal era ( edit ) The Red fort, Agra, c. 1820 The golden age of the city began with the Mughals. It was known then as Akbarabād and remained the capital of the Mughal Empire under the Badshahs Akbar, Jahāngīr and Shāh Jahān. Akbar made it the eponymous seat of one of his original twelve subahs ( imperial top - level
+
+Document (Title: - wikipedia Martyr Jump to : navigation, search For other uses, see Martyr ( disambiguation )): - wikipedia Martyr Jump to : navigation, search For other uses, see Martyr ( disambiguation ). The Christian martyrs of Japan ; 17th - century Japanese painting A martyr ( Greek : μάρτυς, mártys, `` witness '' ; stem μάρτυρ -, mártyr - ) is someone who suffers persecution and death for advocating, renouncing, refusing to renounce, or refusing to advocate a belief or cause as demanded by an external party. This refusal to comply with the presented demands results in the punishment or execution of the martyr by the oppressor. Originally applied only to those who suffered for their religious beliefs, the term has come to be used in connection with people imprisoned or killed for espousing a political cause. Most martyrs are considered holy or are respected by their followers, becoming symbols of exceptional leadership and heroism in the face of difficult circumstances. Martyrs play significant roles in religions. Similarly, martyrs have had notable effects in secular life, including such figures as Socrates, among other political and cultural examples. Contents ( hide ) 1 Meaning 2 Bahá'í Faith 3 Chinese culture 4 Christianity 5 Hinduism 6 Islam 7 Judaism 8 Sikhism 9 Notable martyrs 10 Political martyrs 11 Revolutionary martyr 12 Further research 13 See also
+
+Document (Title: Globe nomination): Globe nomination. Contents ( hide ) 1 Background 2 Personality 3 Style 4 References Background ( edit ) Kalinda previously worked for Peter Florrick ( Chris Noth ) for three years. He fired her after accusing her of working two jobs. After becoming good friends, Peter 's wife Alicia Florrick ( Julianna Margulies ) finds out Kalinda had a one - night stand with Peter before she knew Alicia, damaging their friendship ; but over time, the two start to reconcile. In season four, it is revealed that Kalinda has an estranged abusive husband, Nick Saverese ( played by Marc Warren ). Kalinda also grows romantically close with Cary Agos ( Matt Czuchry ). In season six, she desperately tries to save Cary from a malicious prosecution on drug - related charges while Alicia is busy running for office, and at a point of desperation, fakes a Brady violation through computer hacking to have Cary 's charges dropped. Later, when her deception is caught, she is forced to surrender drug dealer Lemond Bishop ( Mike Colter ) to the state 's attorney 's office in order to spare Diane Lockhart ( Christine Baranski ) from prosecution ; Diane had unknowingly used the fake evidence in court. In order not to be found by Bishop for turning him over to the
+
+Document (Title: Jeep Grand Cherokee - wikipedia Jeep Grand Cherokee Jump to : navigation): Jeep Grand Cherokee - wikipedia Jeep Grand Cherokee Jump to : navigation, search Jeep Grand Cherokee Overview Manufacturer Chrysler Corporation ( 1993 - 1998 ) DaimlerChrysler ( 1999 - 2007 ) Chrysler LLC ( 2007 - 2009 ) Chrysler Group LLC ( 2009 - 2014 ) Fiat Chrysler Automobiles ( 2014 - present ) Magna Steyr Production 1992 -- present Model years 1993 -- present Body and chassis Class Full - size SUV Body style 5 - door SUV Layout Front - engine, rear - wheel - drive or four - wheel drive 1993 - present Wheelbase 2,915 mm ( 114.8 in ) Length 4,822 -- 4,846 mm ( 189.8 -- 190.8 in ) Width 1,943 mm ( 76.5 in ) Height 1,749 -- 1,781 mm ( 68.9 --
+
+Document (Title: Personal details George Elmer Pataki ( 1945 - 06 - 24 ) June 24, 1945 ( age 73): Personal details George Elmer Pataki ( 1945 - 06 - 24 ) June 24, 1945 ( age 73 ) Peekskill, New York, U.S. Political party Republican Spouse ( s ) Libby Rowland ( m. 1973 ) Children 4, including Allison Pataki Residence Garrison, New York Alma mater Yale University ( B.A. ) Columbia Law School ( J.D. ) Signature Website Official website George Elmer Pataki ( / pəˈtɑːki / ; born June 24, 1945 ) is an American lawyer and Republican politician who served as the 53rd Governor of New York ( 1995 -- 2006 ). An attorney by profession, Pataki was elected mayor of his hometown of Peekskill, New York and went on to be elected to the State Assembly and the State Senate. In 1994, Pataki ran for Governor of New York against three - term incumbent Mario Cuomo, defeating him by a margin of more than three points as part of the Republican Revolution of 1994. Pataki would himself be elected to three consecutive terms, and was the third Republican Governor of New York elected since 1923 ( the other two
+
+Document (Title: - in - chief, who were discussing ways to promote capture of the FBI 's `` toughest guys ''): - in - chief, who were discussing ways to promote capture of the FBI 's `` toughest guys ''. This discussion turned into a published article, which received so much positive publicity that on March 14, 1950, the FBI officially announced the list to increase law enforcement 's ability to capture dangerous fugitives. Individuals are generally only removed from the list if the fugitive is captured, dies, or if the charges against them are dropped ; they are then replaced by a new entry selected by the FBI. In nine cases, the FBI removed individuals from the list after deciding that they were no longer a `` particularly dangerous menace to society ''. Machetero member Víctor Manuel Gerena, added to the list in 1984, was on the list for 32 years, which was longer than anyone else. Billie Austin Bryant spent the shortest amount of time on the list, being listed for two hours in 1969. The oldest person to be added to the list was William Bradford Bishop, Jr. on April 10, 2014 at 77 years old. On rare occasions, the FBI will add a `` Number Eleven '' if that individual is extremely dangerous but the Bureau does not feel any of the current ten should be removed. Despite occasional references in the media, the FBI does not rank their list ; no suspect is considered `` # 1 on the FBI
+
+Document (Title: Walt Disney Pictures Lucamar Productions Marc Platt Productions Distributed by): Walt Disney Pictures Lucamar Productions Marc Platt Productions Distributed by Walt Disney Studios Motion Pictures Release date December 25, 2018 ( 2018 - 12 - 25 ) ( US ) Country United States Language English Mary Poppins Returns is an upcoming American musical fantasy film directed by Rob Marshall, with a screenplay by David Magee and from a story by Magee, Marshall, and John DeLuca. A sequel to the 1964 film Mary Poppins, the film stars Emily Blunt as Mary Poppins with Lin - Manuel Miranda, Ben Whishaw, Emily Mortimer, Pixie Davies, Joel Dawson, Nathanael Saleh, Julie Walters, Colin Firth, and Meryl Streep in supporting roles. Set in 1930s London, 25 years after the 1964 film, it sees Mary Poppins, the former nanny of Jane and Michael Banks, re-visiting them after a family tragedy. Principal photography began at Shepperton Studios in Surrey, United Kingdom on February 10, 2017, and ended in July of that year. The film is scheduled for release on December 25, 2018, giving it the longest gap between live - action film sequels in history at 54 years.
+
+Document (Title: of Hope and Glory - wikipedia Land of Hope and Glory For other uses, see Land): of Hope and Glory - wikipedia Land of Hope and Glory For other uses, see Land of Hope and Glory ( disambiguation ). `` Land of Hope and Glory '' Land of Hope and Glory, Mother of the Free, How shall we extol thee, who are born of thee? Wider still and wider shall thy bounds be set ; God, who made thee mighty, make thee mightier yet, God, who made thee mighty, make thee mightier yet. `` Land of Hope and Glory '' sung by Clara Butt in 1911 `` Land of Hope and Glory '' is a British patriotic song, with music by Edward Elgar and lyrics by A.C. Benson, written in 1902. Contents ( hide ) 1 Composition 1.1 Lyrics 1.2 `` Wider still and wider '' 2 Usage 2.1 Proposed anthem for England 2.2 Commonwealth Games 2.3 BBC Proms 2.4 Rugby 2.5 Football 2.6 Films 2.7 United States, Canada and The Philippines 3 See also 4 References 5 External links Composition ( edit ) A.C. Benson, lyricist Edward Elgar, composer The music to which the words of the refrain `` Land of Hope and Glory, &c
+
+Document (Title: 9.4 References 10 External links Early life and education ( edit ) John Glover): 9.4 References 10 External links Early life and education ( edit ) John Glover Roberts was born in Buffalo, New York, the son of Rosemary ( née Podrasky ) and John Glover `` Jack '' Roberts Sr. ( 1928 -- 2008 ). His father was a plant manager with Bethlehem Steel. He has Irish, Welsh, and Czech ancestry. When Roberts was in fourth grade, his family moved to Long Beach, Indiana. He grew up with three sisters : Kathy, Peggy, and Berbere. Roberts attended Notre Dame Elementary School, a Roman Catholic grade school in Long Beach. In 1973, he graduated from La Lumiere School, a Roman Catholic boarding school in La Porte, Indiana, where he was a student and athlete. He studied five years of Latin ( in four years ), some French, and was known generally for his devotion to his studies. He was captain of the football team ( he later described himself as a `` slow - footed linebacker '' ), and was a regional champion in wrestling. He participated in choir and drama, co-edited the school newspaper, and served on the athletic council and the executive committee of the student council. After graduating from high school in 1973, Roberts entered Harvard University as a history major. Due to his academic excellence in
+
+Question: who was the founder of the city of agra
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+Sultan Sikandar Lodī
+
+
+================================================================================
+  TRAIN Example 3
+  Documents: 20 | Prompt chars: 21,746 | Output chars: 25
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to write a concise and short answer to the question. Write your answer in the following format:
+Answer: [answer]
+
+### Input:
+Document (Title: theMeatly Bookpast Composer ( s ) theMeatly Engine Unity Platform ( s )): theMeatly Bookpast Composer ( s ) theMeatly Engine Unity Platform ( s ) Microsoft Windows macOS Linux PlayStation 4 Xbox One Nintendo Switch Release Chapter One : Moving Pictures February 10, 2017 Chapter Two : The Old Song April 18, 2017 Chapter Three : Rise and Fall September 28, 2017 Chapter Four : Colossal Wonders April 30, 2018 Chapter Five : The Last Reel October 26, 2018 Chapter? : Archives October 26, 2018 Complete Edition ( Steam ) October 27, 2018 Consoles ( Nintendo Switch, Xbox One, and PlayStation 4 ) November 20, 2018 Genre ( s ) Survival horror Mode ( s ) Single - player Bendy and the Ink Machine ( often abbreviated to BATIM ) is an survival horror video game developed and published by Kindly Beast, under the name of the game 's fictional animation studio, Joey Drew Studios Inc. ( TheMeatly Games, Ltd. until August 1, 2018 ).
+
+Document (Title: Budget $125 -- 195 million Box office $407.8 million The Mummy is a 2017): Budget $125 -- 195 million Box office $407.8 million The Mummy is a 2017 American action - adventure film directed by Alex Kurtzman and written by David Koepp, Christopher McQuarrie and Dylan Kussman, with a story by Kurtzman, Jon Spaihts and Jenny Lumet. It is a reboot of The Mummy franchise and the first installment in the Universal 's Dark Universe. The film stars Tom Cruise, Annabelle Wallis, Sofia Boutella, Jake Johnson, Courtney B. Vance and Russell Crowe. The Mummy premiered at the State Theatre in Sydney, Australia on May 22, 2017, and was theatrically released in the United States on June 9, 2017, in 2D, 3D and IMAX 3D. It received negative reviews from critics and grossed over $407 million worldwide. It was labeled a box office disappointment given its high production and marketing costs, with projected losses of around $95 million. Contents ( hide ) 1 Plot 2 Cast 3 Production 3.1 Filming 3.2 Music 4 Release 5 Reception 5.1 Box office 5.1. 1 United States and Canada 5.1. 2 International 5.2 Critical response 6 Future 7 References 8 External links
+
+Document (Title: ST depression - wikipedia ST depression ST depression refers to a finding on an): ST depression - wikipedia ST depression ST depression refers to a finding on an electrocardiogram, wherein the trace in the ST segment is abnormally low below the baseline. Contents 1 Measurement 2 Physiology 3 Causes 3.1 Mnemonic 4 See also 5 References Measurement ( edit ) ST segment depression may be determined by measuring the vertical distance between the patient 's trace and the isoelectric line at a location 2 - 3 millimeters from the QRS complex. It is significant if it is more than 1 mm in V5 - V6, or 1.5 mm in AVF or III. In a cardiac stress test, an ST depression of at least 1 mm after adenosine administration indicates a reversible ischaemia, while an exercise stress test requires
+
+Document (Title: Xennials - wikipedia Xennials Jump to : navigation, search Xennials ( also): Xennials - wikipedia Xennials Jump to : navigation, search Xennials ( also known as the Oregon Trail Generation and Generation Catalano ) is a neologistic term used to describe people born during the Generation X / Millennial cusp years, typically from the late 1970s to the early 1980s. People who identify with Xennials, Oregon Trail Generation or Generation Catalano do so because they do not feel they fit within the typical definitions of Generation X or Millennials. In 2017, Xennial was included in Merriam - Webster 's `` Words We 're Watching '' section which discusses new words which are increasingly being used, but which do not yet meet criteria for dictionary entry. Terminology ( edit ) The term `` Xennials '' is a portmanteau
+
+Document (Title: including others who have also gained superhuman abilities): including others who have also gained superhuman abilities. It is set in the Arrowverse, sharing continuity with the other television series of the universe, and is a spin - off of Arrow. The season is produced by Berlanti Productions, Warner Bros. Television, and DC Entertainment, with Andrew Kreisberg and Todd Helbing serving as showrunners. The season was ordered in January 2017, and filming began that July. Grant Gustin stars as Barry, with principal cast members Candice Patton, Danielle Panabaker, Carlos Valdes, Keiynan Lonsdale, Tom Cavanagh, and Jesse L. Martin also returning from previous seasons, and are joined by Neil Sandilands. The fourth season began airing on October 10, 2017, on The CW. Contents ( hide ) 1 Episodes 2 Cast and characters 2.1 Main 2.2 Recurring 2.3 Guest 3 Production 3.1 Development 3.2 Writing 3.3 Casting 3.4 Filming 3.5 Music 3.6 Arrowverse tie - ins 4 Release 4.1 Broadcast 4.2 Marketing 5 Reception 5.1 Ratings 5.2 Critical response 5.3 Accolades 6 References 7 External links Episodes ( edit ) See also : List of
+
+Document (Title: Houghton Mifflin Publication date 1960 Media type Print ( hardcover & paperback): Houghton Mifflin Publication date 1960 Media type Print ( hardcover & paperback ) ; Audiobook Pages 194 pp ISBN 0 - 395 - 06962 - 9 OCLC 225474 Followed by Zia Island of the Blue Dolphins is a 1960 children 's novel written by Scott O'Dell and tells the story of a young girl stranded alone for years on an island off the California coast. It is based on the true story of a Nicoleño Native American left alone for 18 years on San Nicolas Island during the 19th century. Island of the Blue Dolphins won the Newbery Medal in 1961. It was adapted into a film of the same name in 1964. O'Dell later wrote a sequel, Zia, published in 1976. The 50th Anniversary edition of Island of the Blue Dolphins includes a new introduction by Newbery Medalist Lois Lowry and also includes extracts from Father Gonzales Rubio in the Santa Barbara Mission 's Book of Burials. Island of the Blue Dolphins : The Complete Reader 's Edition, a critical edition edited by Sara L. Schwebel, was published in October 2016 by the University of California Press. It includes two chapters deleted from the book before publication. Contents
+
+Document (Title: List of the Next Step episodes This article 's plot summaries may be too long): List of the Next Step episodes This article 's plot summaries may be too long or excessively detailed. Please help improve them by removing unnecessary details and making them more concise. ( July 2016 ) ( Learn how and when to remove this template message ) The Next Step is a Canadian teen drama series created by Frank van Keeken and produced by Temple Street Productions. Shot in a dramatic mockumentary style, the series focuses on a group of dancers who attend The Next Step Dance Studio. They have won Regionals, Nationals and Internationals. The series has been renewed for a sixth season of 26 episodes which will premiere in Canada in September 2018, and in the UK on July 16, 2018. Contents 1 Series overview 2 Episodes 2.1 Season 1 ( 2013 -- 14 ) 2.2 Season 2 ( 2014 -- 15 ) 2.3 Season 3 ( 2015 ) 2.4 Season 4 ( 2016 -- 17 ) 2.5 Season 5 ( 2017 ) 2.6 Season 6 ( 2018 -- ) 3 References Series overview ( edit ) Season Episodes Originally aired First aired Last aired 30 14
+
+Document (Title: Patriots makes it ten titles among the four Boston teams ( 5 by the Patriots, 3): Patriots makes it ten titles among the four Boston teams ( 5 by the Patriots, 3 by the Red Sox, and one each by the Celtics and Bruins ) since 2002. For the Eagles, with the loss, the city of Philadelphia would not see its first championship since the 76ers swept the 1983 NBA Finals until the next time their city 's teams played for a championship, when the Phillies won the 2008 World Series. The Eagles did not return to the Super Bowl until 2017, also with a 13 - 3 record, and defeating the Falcons and Vikings in the playoffs. The Eagles and the Patriots met again in Super Bowl LII, following the 2017 season, with the Eagles taking their revenge 41 -- 33. This is the last time that a team has won back - to - back Super Bowls, with the Patriots losing their second playoff game a year later and then, for the next eight years, every team either losing their first playoff game or missing them altogether. The streak was broken in 2014 when the Seahawks defeated the Panthers and ultimately advanced to the Super Bowl, only to lose to a Patriots goal line stand. The next year, the Patriots, having faltered down the stretch, entered those playoffs as the second seed behind the Broncos, who then defeated New England in the AFC Title Game
+
+Document (Title: Bottom bracket - wikipedia Bottom bracket Aerozine ceramic bottom bracket BSC /): Bottom bracket - wikipedia Bottom bracket Aerozine ceramic bottom bracket BSC / ISO The bottom bracket on a bicycle connects the crankset ( chainset ) to the bicycle and allows the crankset to rotate freely. It contains a spindle that the crankset attaches to, and the bearings that allow the spindle and cranks to rotate. The chainrings and pedals attach to the cranks. The bottom bracket fits inside the bottom bracket shell, which connects the seat tube, down tube and chain stays as part of the bicycle frame. The term `` bracket '' refers to the tube fittings that are used to hold frame tubes together in lugged steel frames which also form the shell that contains the spindle and bearings ; the term is now used for all frames, bracketed or not. There is some disagreement as to whether the word axle or spindle should be used in particular
+
+Document (Title: Norm of the North Pablo and Stan Voice 2016 El Americano : The Movie García): Norm of the North Pablo and Stan Voice 2016 El Americano : The Movie García Voice 2016 Gabriel Iglesias : I 'm Sorry For What I Said While I Was Hungry Himself Stand - up comedy film 2017 Smurfs : The Lost Village Jokey Smurf Voice 2017 The Nut Job 2 : Nutty by Nature Jimmy Voice 2017 Coco Head Clerk Voice 2017 The Star Rufus Voice 2017 Ferdinand Cuatro Voice 2018 Show Dogs Sprinkles Voice 2018 Blazing Samurai Chuck Voice Television Year Title Role Notes 2000 All That Various Characters 2000 Premium Blend Performer Season 3, Episode 8 2002 My Wife and Kids Nabu Season 2, Episode 17 2003
+
+Document (Title: London Fog - wikipedia London Fog Jump to : navigation, search London fog may): London Fog - wikipedia London Fog Jump to : navigation, search London fog may refer to the so - called pea soup fog in London in the late 19th and early 20th centuries. London Fog may refer to : London Fog ( beverage ), an Earl Grey tea - based drink London Fog ( cocktail ), an alcoholic drink made with gin and Pernod London Fog ( company ), a popular manufacturer of coats and other clothes London Fog ( nightclub ), a 1960s nightclub on the Sunset Strip where The Doors first played as a house band This disambiguation page lists articles associated with the title London fog. If an internal link led you here, you may wish to change the link to point directly to the intended article. Retrieved from
+
+Document (Title: , the last teenager to be executed in Britain): , the last teenager to be executed in Britain. 20 December 1961 : Robert McGladdery, 25, in Crumlin Road Gaol in Belfast, the last person to be executed in Northern Ireland, for the murder of Pearl Gamble in Newry. 4 April 1962 : James Hanratty at Bedford after a controversial rape - murder trial. In 2002 Hanratty 's body was exhumed and the Court of Appeal upheld his conviction after Hanratty 's DNA was linked to crime scene samples. 15 August 1963 : Henry Burnett, aged 21, at Craiginches Prison in Aberdeen for the murder of seaman Thomas Guyan, the last hanging in Scotland. 13 August 1964 : Peter Anthony Allen, at Walton Prison in Liverpool, and Gwynne Owen Evans, at Strangeways Prison in Manchester for the murder of John Alan West, the last people executed in Britain. See also ( edit ) Black cap Christopher Simcox Courts of the United Kingdom Execution by firing squad in the United Kingdom List of executioners Shot at Dawn Memorial Use of capital punishment by country Wrongful execution Capital punishment in Hong Kong Capital punishment in Singapore References ( edit ) Notes ( edit ) Jump up ^ Hoffman & Rowe 2010, p. 148
+
+Document (Title: of Tree Hill High School hostage with a gun): of Tree Hill High School hostage with a gun. While lives hang in the balance, Nathan and Lucas put themselves at risk to protect their friends and loved ones. Young lives are shattered and two will end. Dan takes revenge on a close relative. This episode is named after a song by Explosions in the Sky. 62 17 `` Who Will Survive, and What Will Be Left of Them '' John Asher Mark Schwahn March 29, 2006 ( 2006 - 03 - 29 ) 2T6167 2.82 The aftermath of the school shooting and the death of Jimmy Edwards force everyone in Tree Hill to examine their lives. Nathan reassesses his relationship with Haley, while Brooke and Rachel join forces to heal the student body. Dan must deal with the ramifications of killing Keith. Lucas and Peyton consider the implications of their kiss in the library. This episode is named after an album by Murder by Death. The title is also the tagline of the 1974 horror movie The Texas Chain Saw Massacre. 63 18 `` When It Is n't Like It Should Be '' Paul Johansson R. Lee Fleming, Jr. April 5, 2006 ( 2006 - 04 - 05 )
+
+Document (Title: franc ( CHF ) Time zone CET ( UTC + 1 ) Summer ( DST ) CEST ( UTC + 2 ) Date format dd): franc ( CHF ) Time zone CET ( UTC + 1 ) Summer ( DST ) CEST ( UTC + 2 ) Date format dd. mm. yyyy ( AD ) Drives on the right Calling code + 41 Patron saint St Nicholas of Flüe ISO 3166 code CH Internet TLD. ch Website www.admin.ch Switzerland, officially the Swiss Confederation, is a sovereign state in Europe. It consists of 26 cantons, and the city of Bern is the seat of the federal authorities. The federal republic is situated in western, central and southern Europe, and is bordered by Italy to the south, France to the west, Germany to the north, and Austria and Liechtenstein to the east. Switzerland is a landlocked country geographically divided between the Alps, the Swiss Plateau and the Jura, spanning a total area of 41,285 km ( 15,940 sq mi ) ( land area 39,997 km ( 15,443 sq mi ) ). While the Alps occupy the greater part of the territory, the Swiss population of approximately eight million people is concentrated mostly on the plateau, where the largest cities are to
+
+Document (Title: The Shawn Mendes EP ( 2014 ) The Shawn Mendes EP 2014 Handwritten ( 2015 )): The Shawn Mendes EP ( 2014 ) The Shawn Mendes EP 2014 Handwritten ( 2015 ) Illuminate ( 2016 ) Illuminate 2016 Singles from Handwritten `` Life of the Party '' Released : June 26, 2014 `` Something Big '' Released : November 7, 2014 `` Stitches '' Released : May 5, 2015 Singles from Handwritten Revisited `` I Know What You Did Last Summer '' Released : November 18, 2015 Handwritten is the debut studio album by Canadian singer Shawn Mendes, and was released on April 14, 2015 by Island. It debuted at number one on the US Billboard 200 with first - week sales of 119,000 album - equivalent units, of which 106,000 copies were pure album sales. The album includes `` Stitches '', which reached top 5 on the US Billboard Hot 100 and number one on the UK Singles Chart for 2 weeks, while its reissue features the US top 20 single `` I Know What You Did Last Summer ''. Contents ( hide ) 1 Background 2 Singles 2.1 Other songs 3
+
+Document (Title: Season 4 ( 1974 -- 75 ) 2.6 Season 5 ( 1975 -- 76 ) 2.7 Season 6 ( 1976 -- 77 )): Season 4 ( 1974 -- 75 ) 2.6 Season 5 ( 1975 -- 76 ) 2.7 Season 6 ( 1976 -- 77 ) 2.8 Season 7 ( 1977 -- 78 ) 2.9 Season 8 ( 1989 ) 2.10 Season 9 ( 1989 -- 90 ) 2.11 Season 10 and specials ( 1990 -- 2003 ) 3 Repeat offenders 4 Notes 5 References Series overview ( edit ) Season Episodes Originally aired First aired Last aired Network Pilots February 20, 1968 ( 1968 - 02 - 20 ) March 1, 1971 ( 1971 - 03 - 01 ) NBC 7 September 15, 1971 ( 1971 - 09 - 15 ) February 9, 1972 ( 1972 - 02 - 09 ) 8 September 17, 1972 ( 1972 - 09 - 17 ) March 25, 1973 ( 1973 - 03 - 25 ) 8 September 23, 1973 ( 1973 - 09 - 23 ) May 5, 1974 ( 1974 - 05 - 05 )
+
+Document (Title: the end of the three weeks orientation camp after which corp members are posted): the end of the three weeks orientation camp after which corp members are posted to their Place of Primary Assignment ( PPA ). They are expected to work as full time staff at their PPA with exception of one working day devoted for the execution of community development service. After eleven months at their PPA, corp member are allowed a one month of vacation before their final passing out ceremony where they would be issued certificates of completion. Merit ( edit ) Nigerian Graduates are ineligible for employment in governmental establishments ( and few private establishments ) till they have completed the mandatory one year service. Graduates who are exempted from the service include those above the age of thirty ( 30 ) and those with physical disability, therefore completing the service year entitles one to employment. During the service year, Corps members have the opportunity of learning the cultures of other people. An NYSC forum dedicated to the NYSC members was built to bridge the gap amongst members serving across Nigeria and also an avenue for corpers to share job information and career resources as well as getting loans from the National Directorate Of Employment. Objectives of the scheme ( edit ) The objectives of the National Youth Service Corps Scheme are clearly spelt out in Decree No. 51 of 16th June 1993 as follows : To inculcate discipline in Nigerian youths by instilling in
+
+Document (Title: Model Secondary school for the Deaf - wikipedia Model Secondary school for the): Model Secondary school for the Deaf - wikipedia Model Secondary school for the Deaf Jump to : navigation, search The Model Secondary School ( MSSD ) is a residential four - year high school for deaf and hard - of - hearing students located on the Gallaudet University campus in Washington, D.C.. Contents ( hide ) 1 History 2 Campus and student body 3 References 4 See also History ( edit ) The Model Secondary School for the Deaf Act was signed by President Lyndon B. Johnson on October 15, 1966 ( P.L. 89 - 694 ). In May 1969, the Secretary of the U.S. Department of Health, Education and Welfare and the President of Gallaudet College signed an agreement authorizing the establishment and operation of the Model Secondary School for the Deaf ( MSSD ) at the College. MSSD is now located on the northeastern end of the Gallaudet University campus. MSSD provides a tuition - free comprehensive day and residential four - year high school program for deaf and hard of hearing students from the United States and its territories. MSSD is fully accredited by two organizations : Middle States Association of Colleges and Schools Conference of Educational Administrators of Schools and Programs for
+
+Document (Title: completions : 165 Percentage : 56.1 TD -- INT : 11 -- 5 Passing yards : 2,042): completions : 165 Percentage : 56.1 TD -- INT : 11 -- 5 Passing yards : 2,042 Passer rating : 83.2 Player stats at NFL.com Head coaching record Regular season : 69 -- 57 (. 548 ) Postseason : 1 -- 2 (. 333 ) Career : 70 -- 59 (. 543 ) Coaching stats at PFR Jason Calvin Garrett ( born March 28, 1966 ) is the head coach of the Dallas Cowboys of the National Football League ( NFL ). He was the offensive coordinator and assistant head coach of the Cowboys before being promoted to interim head coach after the firing of Wade Phillips on November 8, 2010. Garrett was also a professional American football quarterback in the NFL for the Dallas Cowboys, New York Giants, Tampa Bay Buccaneers and Miami Dolphins. He played college football at Princeton University. Contents 1 Early years 2 College career 3 Professional career 3.1 New Orleans Saints 3.2 San Antonio Riders 3.3 Ottawa Rough Riders
+
+Document (Title: of two high schools : McMillen or Williams): of two high schools : McMillen or Williams. The school colors are black and gold, and the school mascot is the panther. Plano East has been awarded the U.S. Department of Education Blue Ribbon School of Excellence, Best High School in Texas designation by Redbook magazine, Texas Education Agency Blue Ribbon School, and State and National Academic Decathlon Championships. Plano East 's graduating classes are among the largest for high schools in the United States. Plano East 's Class of 2005, with 1220 graduates, was the largest high school graduating class in the U.S. that year. The Class of 2014 was also the largest high school graduating class in the U.S., with 1561 graduates. Plano East is the only senior high school in Plano ISD to offer the International Baccalaureate Diploma Programme. Students who would normally attend either Plano or Plano West are allowed to transfer to Plano East to participate in the IB Programme without forfeiting UIL eligibility. Beginning with the 2014 - 2015 school year, Plano East became the 2nd campus to host part of the Plano ISD Health Sciences Academy for Juniors and Seniors. The Health Sciences Academy was also established in the 2013 - 2014 school year at Williams High School for Freshmen and Sophomores. Contents 1 History 2 Rivalries 3 Athletics 3.1 Football 3.2
+
+Question: when was the last time philadelphia eagles was in the super bowl
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+following the 2017 season
+
+
+################################################################################
+#  EVAL EXAMPLES (from data/data/kilt/nq-dev-multikilt_1000_k20_dep6.jsonl)
+#  Formatted by: eval script with use_alpaca=True, shots=0
+################################################################################
+
+================================================================================
+  EVAL Example 1
+  Documents: 20 | Prompt chars: 10,098 | Output chars: 2
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to write a concise and short answer to the question. Write your answer in the following format:
+Answer: [answer]
+
+### Input:
+Document (Title: The Vampire Diaries): On April 6, 2015, lead actress Nina Dobrev confirmed via Instagram that she and co-star Michael Trevino (who plays Tyler Lockwood) would be leaving the show after its sixth season. Dobrev returned to record a voiceover for the seventh-season finale. Trevino appeared as a guest star in season seven and returned for season 8. On March 11, 2016, The CW renewed the series for an eighth season, but on July 23, 2016, announced that the eighth season, which would have 16 episodes,
+
+Document (Title: The Vampire Diaries (season 8)): The Vampire Diaries (season 8)
+"The Vampire Diaries", an American supernatural drama, was renewed for an eighth season by The CW on March 11, 2016. On July 23, 2016, the CW announced that the upcoming season would be the series' last and would consist of 16 episodes. The season premiered on October 21, 2016 and concluded on March 10, 2017.
+Cast.
+Cast Main.
+- Paul Wesley as Stefan Salvatore
+- Ian Somerhalder as Damon Salvatore
+- Kat Graham as
+
+Document (Title: The Vampire Diaries): than a good 24 if Kevin couldn't do it," he explained. The first writers meeting for the fifth season held on April 15, 2013. Filming began on July 10, 2013, and finished on April 10, 2014. On July 23, 2016, it was announced that show would end after a 16-episode eighth season.
+Reception.
+Reception Critical reception.
+"The Vampire Diaries" initially received mixed reviews, which through the course of the show improved greatly. Metacritic gave the show a Metascore of
+
+Document (Title: The Vampire Diaries): -watched series on the network before being supplanted by "Arrow". The show has received numerous award nominations, winning 4 People's Choice Award and many Teen Choice Awards.
+On April 26, 2013, The CW officially announced that the spin-off "The Originals", which focuses on the Original family of vampires, had been ordered to series, and the show began airing during the 2013–14 American television season. The final season premiered on April 18, 2018 and concluded on August 1, 2018.
+
+Document (Title: The Vampire Diaries): On April 6, 2015, lead actress Nina Dobrev confirmed via Instagram that she and co-star Michael Trevino (who plays Tyler Lockwood) would be leaving the show after its sixth season. Dobrev returned to record a voiceover for the seventh-season finale. Trevino appeared as a guest star in season seven and returned for season 8. On March 11, 2016, The CW renewed the series for an eighth season, but on July 23, 2016, announced that the eighth season, which would have 16 episodes,
+
+Document (Title: The Vampire Diaries (season 8)): " Branson
+- Jaz Sinclair as Beatrice Bennett
+- Natashia Williams as Lucy Bennett
+Cast Guest.
+- Aisha Duran as Virginia St. John
+- Tristin Mays as Sarah Nelson
+- Alexandra Chando as Tara
+- Evan Gamble as Henry Wattles
+- Persia White as Abby Bennett Wilson
+- Melinda Clarke as Kelly Donovan
+- Nina Dobrev as Katherine Pierce / Elena Gilbert
+Episodes.
+Production.
+Filming for the season began on July 20, 2016. It was announced on July 23, 2016, that
+
+Document (Title: The Vampire Diaries): The Vampire Diaries
+The Vampire Diaries is an American supernatural teen drama television series developed by Kevin Williamson and Julie Plec, based on the popular book series of the same name written by L. J. Smith. The series premiered on The CW on September 10, 2009, and concluded on March 10, 2017, airing 171 episodes over eight seasons.
+The pilot episode attracted the largest audience for The CW of any series premiere since the network began in 2006; the first season averaged 3.60 million viewers. It was the most
+
+Document (Title: The Vampire Diaries): . On February 13, 2014, The CW renewed the series for a sixth season. On January 11, 2015, the CW renewed the series for a seventh season.
+President of The CW, Mark Pedowitz, said in an interview at the summer TCA's that "The Vampire Diaries" didn't receive an extra episode order for the second season at the request of Kevin Williamson. Kevin Williamson felt to do the best show possible, he would rather do 22 episodes. "I'd rather have a great 22
+
+Document (Title: The Vampire Diaries (season 8)): season 8 of "The Vampire Diaries" would be the series' last. The season would contain 16 episodes. Filming for the season ended on February 8, 2017.
+Production Casting.
+On January 26, 2017, it was announced that Nina Dobrev would return as Elena Gilbert in the series finale. At the end of the episode, "It's Been a Hell of a Ride" on February 24, 2017, it was revealed that Dobrev would reprise her role of Katherine Pierce as well.
+
+Document (Title: The Vampire Diaries): would be the show's last. The final season began airing on October 21, 2016, and ended March 10, 2017.
+Series overview.
+The series is set in the fictional town of Mystic Falls, Virginia, a town charged with supernatural history since its settlement of migrants from New England in the late 19th century. It follows the life of Elena Gilbert (Nina Dobrev), a teenage girl who has just lost both parents in a car accident, as she falls in love with a 162-year-old
+
+Document (Title: The Vampire Diaries (season 7)): The Vampire Diaries (season 7)
+"The Vampire Diaries", a one-hour American supernatural drama, was renewed for a seventh season by The CW on January 11, 2015, and premiered on October 8, 2015. On March 11, 2016, The CW renewed "The Vampire Diaries" for an eighth season, which was confirmed to be the final one on July 2016.
+Cast.
+Cast Main.
+- Paul Wesley as Stefan Salvatore (himself; possessed by Ambrose)(22 Episodes)
+- Ian
+
+Document (Title: The Vampire Diaries): off called "The Originals", that goes into depth about the original vampire family from "The Vampire Diaries". On February 16, 2010, The CW announced that it had renewed the show for a second season, which premiered on September 9, 2010. On April 26, 2011, The CW renewed the show for a third season. The third season premiered on September 15, 2011. The fourth season premiered October 11, 2012. The CW renewed the show for a fifth season on February 11, 2013
+
+Document (Title: Paul Wesley): the hit television series "The Vampire Diaries" since its premiere in September 2009 on The CW. In the series, he played a younger brother to Damon Salvatore (played by Ian Somerhalder) as well as the love interest of a 17-year-old girl named Elena Gilbert (played by Nina Dobrev). Wesley began directing "The Vampire Diaries" in its fifth season and produced the series at the start of season 8.He directed episode 16 in season 2 of "Shadowhunters" for Freeform. In November 2016, it was
+
+Document (Title: The Vampire Diaries (season 5)): The Vampire Diaries (season 5)
+"The Vampire Diaries", a one-hour American supernatural drama, was renewed for a fifth season by The CW on February 11, 2013. The fifth season premiered on October 3, 2013, followed by the series premiere of the spin-off series "The Originals".
+Cast.
+Cast Main.
+- Nina Dobrev as Elena Gilbert / Katherine Pierce / Amara
+- Paul Wesley as Stefan Salvatore / Silas / Tom Avery
+- Ian Somerhalder as Damon Salvatore
+
+Document (Title: 2016–17 United States network television schedule): Reign"—It was announced on December 7, 2016, that season four would be the final season. The series concluded on June 16, 2017.
+- "The Vampire Diaries"—It was announced on July 23, 2016, that season eight would be the final season. The series concluded on March 10, 2017.
+Renewals and cancellations Cancellations/series endings Fox.
+- ""—Canceled on June 7, 2017.
+- "APB"—Canceled on May 11, 2017.
+- "Bones"—It was announced on February 25, 2016
+
+Document (Title: The Vampire Diaries): vampire television series
+
+Document (Title: The Vampire Diaries (season 2)): (voice only)
+- Malese Jow as Annabelle "Anna"
+- Kayla Ewell as Vicki Donovan (uncredited)
+Episodes.
+Production.
+On February 16, 2010, The CW officially renewed "The Vampire Diaries" for a full 22-episode second season. It premiered on Thursday September 9, 2010, at 8 pm ET. The season finale aired on May 12, 2011.
+Production Cast.
+On July 9, 2010, Entertainment Weekly announced Taylor Kinney would join the cast in a recurring role as
+
+Document (Title: The Vampire Diaries (season 8)): Bonnie Bennett
+- Candice King as Caroline Forbes
+- Zach Roerig as Matt Donovan
+- Matt Davis as Alaric Saltzman
+- Michael Malarkey as Lorenzo "Enzo" St. John
+Cast Recurring.
+- Kristen Gutoskie as Seline
+- Demetrius Bridges as Dorian Williams
+- Allison Scagliotti as Georgie Dowling
+- Nathalie Kelley as Sybil
+- Lily Rose Mumford as Josette "Josie" Saltzman
+- Tierney Mumford as Elizabeth "Lizzie" Saltzman
+- Wolé Parks as Arcadius "Cade"
+- Joel Gretsch as Peter Maxwell
+
+Document (Title: The Vampire Diaries (season 5)): .
+Production Development.
+The series was renewed for a fifth season on February 11, 2013. The first writers meeting held on April 15, 2013. Filming began on July 10, 2013, and finished on April 10, 2014.
+Production Cast.
+The cast features Nina Dobrev as Elena Gilbert, Katherine Pierce and Amara; Paul Wesley as Stefan Salvatore, Silas and Tom Avery; Ian Somerhalder as Damon Salvatore; Steven R. McQueen as Jeremy Gilbert; Candice Accola as Caroline Forbes; Zach Roerig as Matt Donovan;
+
+Document (Title: The Vampire Diaries (season 4)): -door pilot focused on the Originals, titled "The Originals" will air on April 25 for series pick-up. On April 26, 2013, The CW announced that "The Originals", "The Vampire Diaries" spin-off series, was picked up for a full season slated to premiere next fall.
+On February 11, 2013, The CW renewed the series for a fifth season.
+Cast.
+Cast Main.
+- Nina Dobrev as Elena Gilbert (23 Episodes) / Katherine Pierce (
+
+Question: when does season 8 of vampire diaries come out
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+on October 21 , 2016  (gold answers: ['on October 21 , 2016', 'October 21 , 2016'])
+
+
+================================================================================
+  EVAL Example 2
+  Documents: 20 | Prompt chars: 10,098 | Output chars: 2
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to write a concise and short answer to the question. Write your answer in the following format:
+Answer: [answer]
+
+### Input:
+Document (Title: The Vampire Diaries (season 8)): The Vampire Diaries (season 8)
+"The Vampire Diaries", an American supernatural drama, was renewed for an eighth season by The CW on March 11, 2016. On July 23, 2016, the CW announced that the upcoming season would be the series' last and would consist of 16 episodes. The season premiered on October 21, 2016 and concluded on March 10, 2017.
+Cast.
+Cast Main.
+- Paul Wesley as Stefan Salvatore
+- Ian Somerhalder as Damon Salvatore
+- Kat Graham as
+
+Document (Title: The Vampire Diaries): than a good 24 if Kevin couldn't do it," he explained. The first writers meeting for the fifth season held on April 15, 2013. Filming began on July 10, 2013, and finished on April 10, 2014. On July 23, 2016, it was announced that show would end after a 16-episode eighth season.
+Reception.
+Reception Critical reception.
+"The Vampire Diaries" initially received mixed reviews, which through the course of the show improved greatly. Metacritic gave the show a Metascore of
+
+Document (Title: The Vampire Diaries): -watched series on the network before being supplanted by "Arrow". The show has received numerous award nominations, winning 4 People's Choice Award and many Teen Choice Awards.
+On April 26, 2013, The CW officially announced that the spin-off "The Originals", which focuses on the Original family of vampires, had been ordered to series, and the show began airing during the 2013–14 American television season. The final season premiered on April 18, 2018 and concluded on August 1, 2018.
+
+Document (Title: The Vampire Diaries): On April 6, 2015, lead actress Nina Dobrev confirmed via Instagram that she and co-star Michael Trevino (who plays Tyler Lockwood) would be leaving the show after its sixth season. Dobrev returned to record a voiceover for the seventh-season finale. Trevino appeared as a guest star in season seven and returned for season 8. On March 11, 2016, The CW renewed the series for an eighth season, but on July 23, 2016, announced that the eighth season, which would have 16 episodes,
+
+Document (Title: The Vampire Diaries): On April 6, 2015, lead actress Nina Dobrev confirmed via Instagram that she and co-star Michael Trevino (who plays Tyler Lockwood) would be leaving the show after its sixth season. Dobrev returned to record a voiceover for the seventh-season finale. Trevino appeared as a guest star in season seven and returned for season 8. On March 11, 2016, The CW renewed the series for an eighth season, but on July 23, 2016, announced that the eighth season, which would have 16 episodes,
+
+Document (Title: The Vampire Diaries (season 8)): " Branson
+- Jaz Sinclair as Beatrice Bennett
+- Natashia Williams as Lucy Bennett
+Cast Guest.
+- Aisha Duran as Virginia St. John
+- Tristin Mays as Sarah Nelson
+- Alexandra Chando as Tara
+- Evan Gamble as Henry Wattles
+- Persia White as Abby Bennett Wilson
+- Melinda Clarke as Kelly Donovan
+- Nina Dobrev as Katherine Pierce / Elena Gilbert
+Episodes.
+Production.
+Filming for the season began on July 20, 2016. It was announced on July 23, 2016, that
+
+Document (Title: The Vampire Diaries): The Vampire Diaries
+The Vampire Diaries is an American supernatural teen drama television series developed by Kevin Williamson and Julie Plec, based on the popular book series of the same name written by L. J. Smith. The series premiered on The CW on September 10, 2009, and concluded on March 10, 2017, airing 171 episodes over eight seasons.
+The pilot episode attracted the largest audience for The CW of any series premiere since the network began in 2006; the first season averaged 3.60 million viewers. It was the most
+
+Document (Title: The Vampire Diaries): . On February 13, 2014, The CW renewed the series for a sixth season. On January 11, 2015, the CW renewed the series for a seventh season.
+President of The CW, Mark Pedowitz, said in an interview at the summer TCA's that "The Vampire Diaries" didn't receive an extra episode order for the second season at the request of Kevin Williamson. Kevin Williamson felt to do the best show possible, he would rather do 22 episodes. "I'd rather have a great 22
+
+Document (Title: The Vampire Diaries (season 8)): season 8 of "The Vampire Diaries" would be the series' last. The season would contain 16 episodes. Filming for the season ended on February 8, 2017.
+Production Casting.
+On January 26, 2017, it was announced that Nina Dobrev would return as Elena Gilbert in the series finale. At the end of the episode, "It's Been a Hell of a Ride" on February 24, 2017, it was revealed that Dobrev would reprise her role of Katherine Pierce as well.
+
+Document (Title: The Vampire Diaries): would be the show's last. The final season began airing on October 21, 2016, and ended March 10, 2017.
+Series overview.
+The series is set in the fictional town of Mystic Falls, Virginia, a town charged with supernatural history since its settlement of migrants from New England in the late 19th century. It follows the life of Elena Gilbert (Nina Dobrev), a teenage girl who has just lost both parents in a car accident, as she falls in love with a 162-year-old
+
+Document (Title: The Vampire Diaries (season 7)): The Vampire Diaries (season 7)
+"The Vampire Diaries", a one-hour American supernatural drama, was renewed for a seventh season by The CW on January 11, 2015, and premiered on October 8, 2015. On March 11, 2016, The CW renewed "The Vampire Diaries" for an eighth season, which was confirmed to be the final one on July 2016.
+Cast.
+Cast Main.
+- Paul Wesley as Stefan Salvatore (himself; possessed by Ambrose)(22 Episodes)
+- Ian
+
+Document (Title: The Vampire Diaries): off called "The Originals", that goes into depth about the original vampire family from "The Vampire Diaries". On February 16, 2010, The CW announced that it had renewed the show for a second season, which premiered on September 9, 2010. On April 26, 2011, The CW renewed the show for a third season. The third season premiered on September 15, 2011. The fourth season premiered October 11, 2012. The CW renewed the show for a fifth season on February 11, 2013
+
+Document (Title: Paul Wesley): the hit television series "The Vampire Diaries" since its premiere in September 2009 on The CW. In the series, he played a younger brother to Damon Salvatore (played by Ian Somerhalder) as well as the love interest of a 17-year-old girl named Elena Gilbert (played by Nina Dobrev). Wesley began directing "The Vampire Diaries" in its fifth season and produced the series at the start of season 8.He directed episode 16 in season 2 of "Shadowhunters" for Freeform. In November 2016, it was
+
+Document (Title: The Vampire Diaries (season 5)): The Vampire Diaries (season 5)
+"The Vampire Diaries", a one-hour American supernatural drama, was renewed for a fifth season by The CW on February 11, 2013. The fifth season premiered on October 3, 2013, followed by the series premiere of the spin-off series "The Originals".
+Cast.
+Cast Main.
+- Nina Dobrev as Elena Gilbert / Katherine Pierce / Amara
+- Paul Wesley as Stefan Salvatore / Silas / Tom Avery
+- Ian Somerhalder as Damon Salvatore
+
+Document (Title: 2016–17 United States network television schedule): Reign"—It was announced on December 7, 2016, that season four would be the final season. The series concluded on June 16, 2017.
+- "The Vampire Diaries"—It was announced on July 23, 2016, that season eight would be the final season. The series concluded on March 10, 2017.
+Renewals and cancellations Cancellations/series endings Fox.
+- ""—Canceled on June 7, 2017.
+- "APB"—Canceled on May 11, 2017.
+- "Bones"—It was announced on February 25, 2016
+
+Document (Title: The Vampire Diaries): vampire television series
+
+Document (Title: The Vampire Diaries (season 2)): (voice only)
+- Malese Jow as Annabelle "Anna"
+- Kayla Ewell as Vicki Donovan (uncredited)
+Episodes.
+Production.
+On February 16, 2010, The CW officially renewed "The Vampire Diaries" for a full 22-episode second season. It premiered on Thursday September 9, 2010, at 8 pm ET. The season finale aired on May 12, 2011.
+Production Cast.
+On July 9, 2010, Entertainment Weekly announced Taylor Kinney would join the cast in a recurring role as
+
+Document (Title: The Vampire Diaries (season 8)): Bonnie Bennett
+- Candice King as Caroline Forbes
+- Zach Roerig as Matt Donovan
+- Matt Davis as Alaric Saltzman
+- Michael Malarkey as Lorenzo "Enzo" St. John
+Cast Recurring.
+- Kristen Gutoskie as Seline
+- Demetrius Bridges as Dorian Williams
+- Allison Scagliotti as Georgie Dowling
+- Nathalie Kelley as Sybil
+- Lily Rose Mumford as Josette "Josie" Saltzman
+- Tierney Mumford as Elizabeth "Lizzie" Saltzman
+- Wolé Parks as Arcadius "Cade"
+- Joel Gretsch as Peter Maxwell
+
+Document (Title: The Vampire Diaries (season 5)): .
+Production Development.
+The series was renewed for a fifth season on February 11, 2013. The first writers meeting held on April 15, 2013. Filming began on July 10, 2013, and finished on April 10, 2014.
+Production Cast.
+The cast features Nina Dobrev as Elena Gilbert, Katherine Pierce and Amara; Paul Wesley as Stefan Salvatore, Silas and Tom Avery; Ian Somerhalder as Damon Salvatore; Steven R. McQueen as Jeremy Gilbert; Candice Accola as Caroline Forbes; Zach Roerig as Matt Donovan;
+
+Document (Title: The Vampire Diaries (season 4)): -door pilot focused on the Originals, titled "The Originals" will air on April 25 for series pick-up. On April 26, 2013, The CW announced that "The Originals", "The Vampire Diaries" spin-off series, was picked up for a full season slated to premiere next fall.
+On February 11, 2013, The CW renewed the series for a fifth season.
+Cast.
+Cast Main.
+- Nina Dobrev as Elena Gilbert (23 Episodes) / Katherine Pierce (
+
+Question: when does season 8 of vampire diaries come out
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+on October 21 , 2016  (gold answers: ['on October 21 , 2016', 'October 21 , 2016'])
+
+
+================================================================================
+  EVAL Example 3
+  Documents: 20 | Prompt chars: 10,098 | Output chars: 2
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to write a concise and short answer to the question. Write your answer in the following format:
+Answer: [answer]
+
+### Input:
+Document (Title: The Vampire Diaries (season 8)): The Vampire Diaries (season 8)
+"The Vampire Diaries", an American supernatural drama, was renewed for an eighth season by The CW on March 11, 2016. On July 23, 2016, the CW announced that the upcoming season would be the series' last and would consist of 16 episodes. The season premiered on October 21, 2016 and concluded on March 10, 2017.
+Cast.
+Cast Main.
+- Paul Wesley as Stefan Salvatore
+- Ian Somerhalder as Damon Salvatore
+- Kat Graham as
+
+Document (Title: The Vampire Diaries): than a good 24 if Kevin couldn't do it," he explained. The first writers meeting for the fifth season held on April 15, 2013. Filming began on July 10, 2013, and finished on April 10, 2014. On July 23, 2016, it was announced that show would end after a 16-episode eighth season.
+Reception.
+Reception Critical reception.
+"The Vampire Diaries" initially received mixed reviews, which through the course of the show improved greatly. Metacritic gave the show a Metascore of
+
+Document (Title: The Vampire Diaries): -watched series on the network before being supplanted by "Arrow". The show has received numerous award nominations, winning 4 People's Choice Award and many Teen Choice Awards.
+On April 26, 2013, The CW officially announced that the spin-off "The Originals", which focuses on the Original family of vampires, had been ordered to series, and the show began airing during the 2013–14 American television season. The final season premiered on April 18, 2018 and concluded on August 1, 2018.
+
+Document (Title: The Vampire Diaries): On April 6, 2015, lead actress Nina Dobrev confirmed via Instagram that she and co-star Michael Trevino (who plays Tyler Lockwood) would be leaving the show after its sixth season. Dobrev returned to record a voiceover for the seventh-season finale. Trevino appeared as a guest star in season seven and returned for season 8. On March 11, 2016, The CW renewed the series for an eighth season, but on July 23, 2016, announced that the eighth season, which would have 16 episodes,
+
+Document (Title: The Vampire Diaries (season 8)): " Branson
+- Jaz Sinclair as Beatrice Bennett
+- Natashia Williams as Lucy Bennett
+Cast Guest.
+- Aisha Duran as Virginia St. John
+- Tristin Mays as Sarah Nelson
+- Alexandra Chando as Tara
+- Evan Gamble as Henry Wattles
+- Persia White as Abby Bennett Wilson
+- Melinda Clarke as Kelly Donovan
+- Nina Dobrev as Katherine Pierce / Elena Gilbert
+Episodes.
+Production.
+Filming for the season began on July 20, 2016. It was announced on July 23, 2016, that
+
+Document (Title: The Vampire Diaries): The Vampire Diaries
+The Vampire Diaries is an American supernatural teen drama television series developed by Kevin Williamson and Julie Plec, based on the popular book series of the same name written by L. J. Smith. The series premiered on The CW on September 10, 2009, and concluded on March 10, 2017, airing 171 episodes over eight seasons.
+The pilot episode attracted the largest audience for The CW of any series premiere since the network began in 2006; the first season averaged 3.60 million viewers. It was the most
+
+Document (Title: The Vampire Diaries): . On February 13, 2014, The CW renewed the series for a sixth season. On January 11, 2015, the CW renewed the series for a seventh season.
+President of The CW, Mark Pedowitz, said in an interview at the summer TCA's that "The Vampire Diaries" didn't receive an extra episode order for the second season at the request of Kevin Williamson. Kevin Williamson felt to do the best show possible, he would rather do 22 episodes. "I'd rather have a great 22
+
+Document (Title: The Vampire Diaries (season 8)): season 8 of "The Vampire Diaries" would be the series' last. The season would contain 16 episodes. Filming for the season ended on February 8, 2017.
+Production Casting.
+On January 26, 2017, it was announced that Nina Dobrev would return as Elena Gilbert in the series finale. At the end of the episode, "It's Been a Hell of a Ride" on February 24, 2017, it was revealed that Dobrev would reprise her role of Katherine Pierce as well.
+
+Document (Title: The Vampire Diaries): On April 6, 2015, lead actress Nina Dobrev confirmed via Instagram that she and co-star Michael Trevino (who plays Tyler Lockwood) would be leaving the show after its sixth season. Dobrev returned to record a voiceover for the seventh-season finale. Trevino appeared as a guest star in season seven and returned for season 8. On March 11, 2016, The CW renewed the series for an eighth season, but on July 23, 2016, announced that the eighth season, which would have 16 episodes,
+
+Document (Title: The Vampire Diaries): would be the show's last. The final season began airing on October 21, 2016, and ended March 10, 2017.
+Series overview.
+The series is set in the fictional town of Mystic Falls, Virginia, a town charged with supernatural history since its settlement of migrants from New England in the late 19th century. It follows the life of Elena Gilbert (Nina Dobrev), a teenage girl who has just lost both parents in a car accident, as she falls in love with a 162-year-old
+
+Document (Title: The Vampire Diaries (season 7)): The Vampire Diaries (season 7)
+"The Vampire Diaries", a one-hour American supernatural drama, was renewed for a seventh season by The CW on January 11, 2015, and premiered on October 8, 2015. On March 11, 2016, The CW renewed "The Vampire Diaries" for an eighth season, which was confirmed to be the final one on July 2016.
+Cast.
+Cast Main.
+- Paul Wesley as Stefan Salvatore (himself; possessed by Ambrose)(22 Episodes)
+- Ian
+
+Document (Title: The Vampire Diaries): off called "The Originals", that goes into depth about the original vampire family from "The Vampire Diaries". On February 16, 2010, The CW announced that it had renewed the show for a second season, which premiered on September 9, 2010. On April 26, 2011, The CW renewed the show for a third season. The third season premiered on September 15, 2011. The fourth season premiered October 11, 2012. The CW renewed the show for a fifth season on February 11, 2013
+
+Document (Title: Paul Wesley): the hit television series "The Vampire Diaries" since its premiere in September 2009 on The CW. In the series, he played a younger brother to Damon Salvatore (played by Ian Somerhalder) as well as the love interest of a 17-year-old girl named Elena Gilbert (played by Nina Dobrev). Wesley began directing "The Vampire Diaries" in its fifth season and produced the series at the start of season 8.He directed episode 16 in season 2 of "Shadowhunters" for Freeform. In November 2016, it was
+
+Document (Title: The Vampire Diaries (season 5)): The Vampire Diaries (season 5)
+"The Vampire Diaries", a one-hour American supernatural drama, was renewed for a fifth season by The CW on February 11, 2013. The fifth season premiered on October 3, 2013, followed by the series premiere of the spin-off series "The Originals".
+Cast.
+Cast Main.
+- Nina Dobrev as Elena Gilbert / Katherine Pierce / Amara
+- Paul Wesley as Stefan Salvatore / Silas / Tom Avery
+- Ian Somerhalder as Damon Salvatore
+
+Document (Title: 2016–17 United States network television schedule): Reign"—It was announced on December 7, 2016, that season four would be the final season. The series concluded on June 16, 2017.
+- "The Vampire Diaries"—It was announced on July 23, 2016, that season eight would be the final season. The series concluded on March 10, 2017.
+Renewals and cancellations Cancellations/series endings Fox.
+- ""—Canceled on June 7, 2017.
+- "APB"—Canceled on May 11, 2017.
+- "Bones"—It was announced on February 25, 2016
+
+Document (Title: The Vampire Diaries): vampire television series
+
+Document (Title: The Vampire Diaries (season 2)): (voice only)
+- Malese Jow as Annabelle "Anna"
+- Kayla Ewell as Vicki Donovan (uncredited)
+Episodes.
+Production.
+On February 16, 2010, The CW officially renewed "The Vampire Diaries" for a full 22-episode second season. It premiered on Thursday September 9, 2010, at 8 pm ET. The season finale aired on May 12, 2011.
+Production Cast.
+On July 9, 2010, Entertainment Weekly announced Taylor Kinney would join the cast in a recurring role as
+
+Document (Title: The Vampire Diaries (season 8)): Bonnie Bennett
+- Candice King as Caroline Forbes
+- Zach Roerig as Matt Donovan
+- Matt Davis as Alaric Saltzman
+- Michael Malarkey as Lorenzo "Enzo" St. John
+Cast Recurring.
+- Kristen Gutoskie as Seline
+- Demetrius Bridges as Dorian Williams
+- Allison Scagliotti as Georgie Dowling
+- Nathalie Kelley as Sybil
+- Lily Rose Mumford as Josette "Josie" Saltzman
+- Tierney Mumford as Elizabeth "Lizzie" Saltzman
+- Wolé Parks as Arcadius "Cade"
+- Joel Gretsch as Peter Maxwell
+
+Document (Title: The Vampire Diaries (season 5)): .
+Production Development.
+The series was renewed for a fifth season on February 11, 2013. The first writers meeting held on April 15, 2013. Filming began on July 10, 2013, and finished on April 10, 2014.
+Production Cast.
+The cast features Nina Dobrev as Elena Gilbert, Katherine Pierce and Amara; Paul Wesley as Stefan Salvatore, Silas and Tom Avery; Ian Somerhalder as Damon Salvatore; Steven R. McQueen as Jeremy Gilbert; Candice Accola as Caroline Forbes; Zach Roerig as Matt Donovan;
+
+Document (Title: The Vampire Diaries (season 4)): -door pilot focused on the Originals, titled "The Originals" will air on April 25 for series pick-up. On April 26, 2013, The CW announced that "The Originals", "The Vampire Diaries" spin-off series, was picked up for a full season slated to premiere next fall.
+On February 11, 2013, The CW renewed the series for a fifth season.
+Cast.
+Cast Main.
+- Nina Dobrev as Elena Gilbert (23 Episodes) / Katherine Pierce (
+
+Question: when does season 8 of vampire diaries come out
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+on October 21 , 2016  (gold answers: ['on October 21 , 2016', 'October 21 , 2016'])
+
+

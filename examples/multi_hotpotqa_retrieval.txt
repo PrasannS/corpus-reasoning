@@ -1,0 +1,459 @@
+# Multi-query HotpotQA retrieval: per-query relevant document IDs
+#
+# Train data: data/multi_hotpotqa_train_retrieval_n10_suponly_bridge_500.jsonl
+# Eval data:  data/multi_hotpotqa_eval_retrieval_n10_suponly_bridge_100.jsonl
+# Examples per section: 3
+#
+# This file shows the exact prompt the model sees during training and evaluation.
+# Training uses Axolotl with alpaca format. Eval uses the corresponding eval script
+# with alpaca format + 0 few-shot demos (for trained/finetuned models).
+
+
+################################################################################
+#  TRAINING EXAMPLES (from data/multi_hotpotqa_train_retrieval_n10_suponly_bridge_500.jsonl)
+#  Formatted by: Axolotl alpaca format (instruction + input -> output)
+################################################################################
+
+================================================================================
+  TRAIN Example 1
+  Documents: 20 | Prompt chars: 12,978 | Output chars: 150
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to identify which documents are relevant to answering each of the following questions. For each question, list the relevant document IDs.
+Write your answer in the following format:
+Relevant Documents: Q1: [id1], [id2]; Q2: [id3], [id4]; ...
+
+### Input:
+Document [1] (Title: Pai gow poker): Pai gow poker (also called double-hand poker) is an Americanized version of pai gow (in that it is played with playing cards bearing poker hand values, instead of pai gow's Chinese dominoes). The game of pai gow poker was created in 1985 by Sam Torosian, owner of the Bell Card Club.
+
+Document [2] (Title: German Football Association): The German Football Association (German: "Deutscher Fußball-Bund" ] ; DFB ] ) is the governing body of football in Germany. A founding member of both FIFA and UEFA, the DFB has jurisdiction for the German football league system and is in charge of the men's and women's national teams. The DFB headquarters are in Frankfurt am Main. Sole members of the DFB are the German Football League (German: "Deutsche Fußball Liga" ; DFL), organising the professional Bundesliga and the 2. Bundesliga, along with five regional and 21 state associations, organising the semi-professional and amateur levels. The 21 state associations of the DFB have a combined number of more than 25,000 clubs with more than 6.8 million members, making the DFB the single largest sports federation in the world.
+
+Document [3] (Title: Hans Oster): Hans Paul Oster (9 August 1887 – 9 April 1945) was a general in the Wehrmacht of Nazi Germany who was also a leading figure of the German resistance from 1938 to 1943. As deputy head of the counter-espionage bureau in the Abwehr (German military intelligence), Oster was in a strong position to conduct resistance operations under the guise of intelligence work; he was dismissed for helping Jews to avoid arrest.
+
+Document [4] (Title: Alien (franchise)): Alien is a British-American science-fiction horror media franchise centered on the film series depicting Warrant Officer Ellen Ripley (played by Sigourney Weaver) and her battles with an extraterrestrial lifeform, commonly referred to as "the Alien", and depicting android David 8 (portrayed by Michael Fassbender) and his experimentation in creating said lifeform.
+
+Document [5] (Title: Laika (company)): Laika Entertainment, LLC., or simply Laika, is an American stop-motion animation studio specializing in feature films, commercial content for all media, music videos and short films. It is best known for its stop-motion feature films, "Coraline", "ParaNorman", "The Boxtrolls" and "Kubo and the Two Strings", all co-produced in partnership with Universal Pictures through its Focus Features label.
+
+Document [6] (Title: Mount Keith Mine): Mount Keith Mine is an open pit nickel mine in Western Australia. It is operated by BHP. The site's closest landmark is the town of Wiluna, 85 km to the north.
+
+Document [7] (Title: DFB Sports Court): The DFB Sports Court (German: DFB-Sportgericht) is a regulatory body in the German Football Association (German: "Deutscher Fussball-Bund" , DFB) and may adopt different sanctions on clubs and players.
+
+Document [8] (Title: Ken Watanabe): Ken Watanabe (渡辺 謙 , Watanabe Ken , born October 21, 1959) is a Japanese actor. To English-speaking audiences, he is known for playing tragic hero characters, such as General Tadamichi Kuribayashi in "Letters from Iwo Jima" and Lord Katsumoto Moritsugu in "The Last Samurai", for which he was nominated for the Academy Award for Best Supporting Actor. Among other awards, he has won the Japan Academy Prize for Best Actor twice, in 2007 for "Memories of Tomorrow" and in 2010 for "Shizumanu Taiyō". He is also known for his roles in director Christopher Nolan's Hollywood films "Batman Begins" and "Inception". In 2014, he starred in the reboot of "Godzilla" as Dr. Ishiro Serizawa, and will reprise his role in the sequel, "". He lent his voice to the fourth and fifth installments of the "Transformers" franchise respectively, "" and "", as Decepticon turned Autobot Drift.
+
+Document [9] (Title: Feliz Navidad (song)): "Feliz Navidad" (] ) is a macaronic Christmas song written in 1970 by the Puerto Rican singer and songwriter José Feliciano. With its simple Spanish chorus (the traditional Christmas/New Year greeting, "Feliz Navidad, próspero año y felicidad" meaning "Merry Christmas, a prosperous year and happiness") and equally simple English verse "I wanna wish you a Merry Christmas from the bottom of my heart", it has become a classic Christmas pop song in the United States, throughout the Spanish-speaking world and internationally.
+
+Document [10] (Title: Baile de Los Locos): Baile de Los Locos is Voodoo Glow Skulls' third full-length album. It was released on May 5, 1997. The album has 25 tracks; tracks 13–24 are left blank; track 25 is a cover of the Christmas song "Feliz Navidad" (Merry Christmas). The title translates as "Dance of the Crazy People".
+
+Document [11] (Title: BHP): BHP, the trading entity of BHP Billiton Limited and BHP Billiton plc and formerly known as BHP Billiton, is an Anglo-Australian multinational mining, metals and petroleum dual-listed public company headquartered in Melbourne, Victoria, Australia. Founded in 1885 in the isolated mining town of Broken Hill, it was the world's largest mining company measured by 2015 market values and Australia's fourth-largest company (by revenue), formerly the largest.
+
+Document [12] (Title: Jorge Luis Borges): Jorge Francisco Isidoro Luis Borges Acevedo {'1': ", '2': ", '3': ", '4': "} ( ; ]    ; 24 August 1899 – 14 June 1986) was an Argentine short-story writer, essayist, poet and translator, and a key figure in Spanish-language literature. His best-known books, "Ficciones" ("Fictions") and "El Aleph" ("The Aleph"), published in the 1940s, are compilations of short stories interconnected by common themes, including dreams, labyrinths, libraries, mirrors, fictional writers, philosophy, and religion.
+
+Document [13] (Title: Ghazal (1975 film)): Ghazal (in Persian: غزل) is a 1975 Iranian film directed by Masoud Kimiai. It stars Mohammad Ali Fardin, Faramarz Gharibian and Pouri Banayi. It is based on the short story "The Interloper", written by Jorge Luis Borges. Because Fardin had been typecast as a happy-go-lucky person who always appeared in movies with happy endings, this film was a departure for him and was not successful at the box office.
+
+Document [14] (Title: Letters from Iwo Jima): Letters from Iwo Jima (硫黄島からの手紙 , Iōjima Kara no Tegami ) is a 2006 Japanese-American war film directed and co-produced by Clint Eastwood, starring Ken Watanabe and Kazunari Ninomiya. The film portrays the Battle of Iwo Jima from the perspective of the Japanese soldiers and is a companion piece to Eastwood's "Flags of Our Fathers", which depicts the same battle from the American viewpoint; the two films were shot back to back. "Letters from Iwo Jima" is almost entirely in Japanese, although it was produced by American companies DreamWorks, Malpaso Productions, and Amblin Entertainment. After "Flags of Our Fathers" underperformed at the box office, DreamWorks swapped the United States distribution rights to Warner Bros., who had the international rights.
+
+Document [15] (Title: The Boxtrolls): The Boxtrolls is a 2014 American 3D stop-motion animated fantasy comedy film based on the novel "Here Be Monsters! " by Alan Snow. Produced by Laika, it was directed by Graham Annable and Anthony Stacchi and written by Irena Brignull and Adam Pava. The film tells the story of Eggs, a human boy raised by trash-collecting trolls, known as "Boxtrolls", as he attempts to save them from Archibald Snatcher, a pest exterminator. The film introduces Isaac Hempstead-Wright as the voice of Eggs and features the voices of Ben Kingsley, Elle Fanning, Dee Bradley Baker, Steven Blum, Toni Collette, Jared Harris, Nick Frost, Richard Ayoade, Tracy Morgan, and Simon Pegg.
+
+Document [16] (Title: W. E. Metzenthin): Waldemar Eric Metzenthin (February 24, 1875 – September 18, 1942) was a German American scholar. He served as professor of German studies at the University of Texas at Austin. He also coached the Texas Longhorns football team and men's basketball team from 1907 to 1908 and 1909 to 1911, respectively, and served as the UT Athletic Director from 1930 to 1935.
+
+Document [17] (Title: Asia Poker): Asia Poker is a casino table game similar to Pai gow poker that is now popular in most Atlantic City, New Jersey casinos. Players are dealt seven cards and divide their cards into three hands: a four-card hand (High), a two-card hand (Medium) and a one-card hand (Low). The four-card hand must be equal or greater in poker ranking than the two-card hand and the two-card hand must be equal or greater than the one-card hand. After all players have set their hand, the dealer sets the house's hand according to the "house way" and then compares each player's hand to the house's hand. If the house wins at least two out of three hands, the player loses. If the player wins at least two or out of three hands the player wins. Unlike Pai gow poker, the casino does not charge a 5% vigorish for winning wagers. Rather, the house edge comes from winning all "copy hands" (a player's hand that is identical to the house's hand). Also, unlike Pai gow poker there are no ties in this game; the player either wins or loses. The House edge figures to be around 3% based on the probability of the player having a losing copy hand.
+
+Document [18] (Title: Brandywine Productions): Brandywine Productions is an American film production company most known for its "Alien" film franchise. The company was founded by American filmmakers Walter Hill, David Giler and Gordon Carroll.
+
+Document [19] (Title: Dexter W. Draper): Dexter Wright Draper (May 23, 1881 – August 22, 1961) was an American football player and coach, as well as a pediatrician. He was an All-American tackle at the University of Pennsylvania from 1905 to 1907. Draper became head football coach at the University of Texas immediately following the resignation of W. E. Metzenthin in 1909. After compiling a 4–3–1 record, including two losses to Longhorns rival Texas A&M, Draper resigned. He later coached at Franklin & Marshall College and The College of William & Mary before entering his chosen field as a doctor in pediatrics. Draper also was the head coach for the William & Mary Tribe men's basketball team from 1913 to 1916. He led the Tribe to a 15–18 record during his two-year tenure. Draper's stint as the football coach from 1913 to 1915 produced a 1–21–2 record.
+
+Document [20] (Title: Oster Conspiracy): The Oster Conspiracy of 1938 was a proposed plan to overthrow German "Führer" Adolf Hitler and the Nazi regime if Germany went to war with Czechoslovakia over the Sudetenland. It was led by Generalmajor (major general) Hans Oster, deputy head of the "Abwehr" and other high-ranking conservatives within the Wehrmacht who opposed the regime for its behaviour that was threatening to bring Germany into a war that they believed it was not ready to fight. They planned to overthrow Hitler and the Nazi regime through a planned storming of the Reich Chancellery by forces loyal to the plot to take control of the government, who would either arrest or assassinate Hitler, and restore the exiled Wilhelm II as Emperor.
+
+Question 1: This japanese actor lent his voice to the fourth and fifth installments of the "Transformers" franchise and was in a  2006 Japanese-American war film directed and co-produced by who?
+Question 2: Baile de Los Locos is Voodoo Glow Skulls' third full-length album, track 25 is a cover of which macaronic Christmas song written in 1970 by which Puerto Rican singer and songwriter ?
+Question 3: The Boxtrolls was produced by which American studio?
+Question 4: An Americanized version of a game played with playing cards bearing poker hand values is popular in what city?
+Question 5: The short story "The Interloper" is written by Jorge Luis Borges. What books is he best known for? 
+Question 6: When was the deputy head of the "Abwehr" was born?
+Question 7: Brandywine Productions is an American film production company, most known for its film franchise, Alien, a British-American science-fiction horror media franchise centered on the film series depicting which Warrant Officer, played by Sigourney Weaver, and her battles with an extraterrestrial lifeform, commonly referred to as "the Alien"?
+Question 8: What is the name for the regulatory body of over 25,000 football clubs in Germany?
+Question 9: The company that owns Mount Keith Mine was founded in what year?
+Question 10: What job did the former University of Texas football coach take when Dexter W. Draper took over?
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+Q1: [8], [14]; Q2: [9], [10]; Q3: [5], [15]; Q4: [1], [17]; Q5: [12], [13]; Q6: [3], [20]; Q7: [4], [18]; Q8: [2], [7]; Q9: [6], [11]; Q10: [16], [19]
+
+
+================================================================================
+  TRAIN Example 2
+  Documents: 20 | Prompt chars: 10,927 | Output chars: 150
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to identify which documents are relevant to answering each of the following questions. For each question, list the relevant document IDs.
+Write your answer in the following format:
+Relevant Documents: Q1: [id1], [id2]; Q2: [id3], [id4]; ...
+
+### Input:
+Document [1] (Title: John du Pont): John Eleuthère du Pont (November 22, 1938 – December 9, 2010) was an American philanthropist and heir to the Du Pont family fortune, he had been a published ornithologist, philatelist, philanthropist, conchologist, sports enthusiast, self-styled wrestling coach. He died in prison while serving a sentence of 30 years in prison for the murder of Dave Schultz.
+
+Document [2] (Title: William Allen (actor)): William Allen (died 1647) was a prominent English actor in the Caroline era. He belonged to both of the most important theatre companies of his generation, Queen Henrietta's Men and the King's Men.
+
+Document [3] (Title: Beyond Good and Evil): Beyond Good and Evil: Prelude to a Philosophy of the Future (German: "Jenseits von Gut und Böse: Vorspiel einer Philosophie der Zukunft" ) is a book by philosopher Friedrich Nietzsche that expands the ideas of his previous work, "Thus Spoke Zarathustra", with a more critical and polemical approach. It was first published in 1886.
+
+Document [4] (Title: Pearl Buck Award): The Pearl Buck Award is distributed by the Sino-American Foundation for the Advancement of Hermeneutical Studies to teachers who have made innovation or shown excellence in the adaptation of current evidence based teaching practices in high schools. The award is named for Pearl S. Buck, the Chinese-raised, Nobel Prize-winning humanitarian for Asian children and other children of color.
+
+Document [5] (Title: The Four II): The Four II (Chinese: 四大名捕2) is a 2013 Chinese-Hong Kong wuxia film directed by Gordon Chan and Janet Chun. It is the sequel to 2012's "The Four".
+
+Document [6] (Title: Dave Schultz (wrestling)): David Leslie "Dave" Schultz (June 6, 1959 – January 26, 1996) was an American Olympic and world champion freestyle wrestler, a seven-time World and Olympic medalist. He coached individuals and teams at the college level and also privately. He was shot and killed by John Eleuthère du Pont, a millionaire philanthropist who sponsored the private Foxcatcher wrestling team at an amateur sports center, known as Foxcatcher Farm, he set up on his estate in Pennsylvania.
+
+Document [7] (Title: Brierley Hill): Brierley Hill is a small town and electoral ward of the Dudley Metropolitan Borough, in the West Midlands of England, and is situated approximately 2.5 miles south of central Dudley and 2 miles north of Stourbridge. Part of the Black Country, and in a heavily industrialised area of the Dudley Borough, it has a population of 13,935 at the 2011 census, and is best known for glass and steel manufacturing, although the industry has declined considerably since the 1970s. One of the largest factories in the area was the Round Oak Steelworks, which was closed down and redeveloped in the 1980s to become the Merry Hill Shopping Centre. Brierley Hill was originally in Staffordshire, but is now part of the West Midlands metropolitan county since its creation in 1974.
+
+Document [8] (Title: Sabden): Sabden is a medium to large village and civil parish in the Ribble Valley, Lancashire. Sabden is located south of Pendle Hill, in a valley about three miles north west of Padiham. The parish is 2,451 acres. It lies in the Forest of Pendle section of the Forest of Bowland Area of Outstanding Natural Beauty.
+
+Document [9] (Title: Speonk, New York): Speonk ( , ) is a hamlet located in the Town of Southampton, Suffolk County, New York.
+
+Document [10] (Title: Ribble Valley): Ribble Valley is a local government district with borough status within the non-metropolitan county of Lancashire, England. The total population of the non-metropolitan district at the 2011 Census was 57,132. Its council is based in Clitheroe. Other places include Whalley, Longridge and Ribchester. The area is so called due to the River Ribble which flows in its final stages towards its estuary near Preston. The area is popular with tourists who enjoy the area's natural unspoilt beauty, much of which lies within the Forest of Bowland.
+
+Document [11] (Title: Thus Spoke Zarathustra): Thus Spoke Zarathustra: A Book for All and None (German: "Also sprach Zarathustra: Ein Buch für Alle und Keinen" , also translated as Thus Spake Zarathustra) is a philosophical novel by German philosopher Friedrich Nietzsche, composed in four parts between 1883 and 1885 and published between 1883 and 1891. Much of the work deals with ideas such as the "eternal recurrence of the same", the parable on the "death of God", and the "prophecy" of the "Übermensch", which were first introduced in "The Gay Science".
+
+Document [12] (Title: Bullhorn, Inc.): Bullhorn is a cloud computing company headquartered inBoston, Massachusetts. The company provides customer relationship management (CRM) and operations software for the staffing industry. As of 2017, the company reported more than 7,000 customers in more than 150 countries. Besides its Boston headquarters, the company has operations in St. Louis, London, Vancouver and Sydney.
+
+Document [13] (Title: Playing company): In Renaissance London, playing company was the usual term for a company of actors. These companies were organized around a group of ten or so shareholders (or "sharers"), who performed in the plays but were also responsible for management. The sharers employed "hired men" that is, the minor actors and the workers behind the scenes. The major companies were based at specific theatres in London; the most successful of them, William Shakespeare's company the King's Men, had the open-air Globe Theatre for summer seasons and the enclosed Blackfriars Theatre in the winters. The Admiral's Men occupied the Rose Theatre in the 1590s, and the Fortune Theatre in the early 17th century.
+
+Document [14] (Title: Merry Hill Shopping Centre): The Merry Hill Centre (officially Intu Merry Hill) is a shopping mall in Brierley Hill near Dudley, England. It was developed between 1985 and 1990, with several subsequent expansion and renovation projects.
+
+Document [15] (Title: Ferguson monoplane): The Ferguson monoplane was the first Irish heavier-than-air craft to fly. The monoplane was designed by Harry Ferguson and built by his brother's company J.B. Ferguson & Company in Belfast.
+
+Document [16] (Title: Harry Ferguson): Henry George "Harry" Ferguson (4 November 188425 October 1960) was an Irish-born British engineer and inventor who is noted for his role in the development of the modern agricultural tractor, for being the first person in Ireland to build and fly his own aeroplane, and for developing the first four-wheel drive Formula One car, the Ferguson P99.
+
+Document [17] (Title: The Four (film)): The Four is a 2012 Chinese-Hong Kong "wuxia" film directed by Gordon Chan and Janet Chun. It is the first film adaptation of Woon Swee Oan's novel series "Si Da Ming Bu" (四大名捕; "The Four Great Constables"), which has previously been adapted to a television series. In all adaptations and interpretations, the nicknames of the Four remained the same — Emotionless, Iron Hands, Life Snatcher and Cold Blood. They dedicated their special skills to the service of their chief, Master Zhuge, in solving crimes and apprehending powerful criminals.
+
+Document [18] (Title: Sydney): Sydney ( ) is the state capital of New South Wales and the most populous city in Australia and Oceania. Located on Australia's east coast, the metropolis surrounds the world's largest natural harbour and sprawls about 70 km on its periphery towards the Blue Mountains to the west, Hawkesbury to the north and Macarthur to the south. Sydney is made up of 658 suburbs, 40 local government areas and 15 contiguous regions. Residents of the city are known as "Sydneysiders". As at June 2016 Sydney's estimated population was 5,029,768.
+
+Document [19] (Title: Pearl S. Buck): Pearl Sydenstricker Buck (June 26, 1892 – March 6, 1973; also known by her Chinese name Sai Zhenzhu; ) was an American writer and novelist. As the daughter of missionaries, Buck spent most of her life before 1934 in Zhenjiang, China. Her novel "The Good Earth" was the best-selling fiction book in the United States in 1931 and 1932 and won the Pulitzer Prize in 1932. In 1938, she was awarded the Nobel Prize in Literature "for her rich and truly epic descriptions of peasant life in China and for her biographical masterpieces". She was the first American woman to win the Nobel Prize for Literature.
+
+Document [20] (Title: Speonk (LIRR station)): Speonk is an unmanned railroad station on the Montauk Branch of the Long Island Rail Road. It is located on Phillips Avenue at Depot Road in Speonk, New York, just north of Montauk Highway (CR 80). The station has two parking lots, one operated by the Long Island Rail Road, and the other operated by the Town of Southampton, both of which are free. It also lies adjacent to one of the largest railroad yards on Long Island's East End. This yard is mostly used to hold passenger consists, as most scheduled trains terminate at Speonk rather than continue all the way to Montauk.
+
+Question 1: John du Pont served 30 years in prison for the murder of which Olympic wrestler?
+Question 2: In which city was the Ferguson monoplane designed by Harry Ferguson built?
+Question 3: In Brierley Hill what factory was closed down in 1980s to develop a shopping center made in the 1985 and 1990?
+Question 4:  Beyond Good and Evil: Prelude to a Philosophy of the Future and  Thus Spoke Zarathustra: A Book for All and None are both philosophical novels by what German philosopher?
+Question 5: What town does Speonk and Speonk, New York have in common?
+Question 6: How large is the Sabden village, which is located in the Ribble Valley, within the non-metropolitan county of Lancashire, England?
+Question 7: What are the two most important companies of actors in Renaissance London that William Allen belonged to?
+Question 8: What 2013 film is a sequel to an adaptation to of Woon Swee Oan's novel series "Si Da Ming Bu" (四大名捕; "The Four Great Constables")?
+Question 9: The Pearl Buck Award is distributed by the Sino-American Foundation for the Advancement of Hermeneutical Studies to teachers, this award is named for which Chinese-raised, Nobel Prize-winning humanitarian?
+Question 10: Bullhorn is a cloud computing company headquartered inBoston, Massachusetts, besides its Boston headquarters, the company has operations in St. Louis, London, Vancouver and which state capital of New South Wales and the most populous city in Australia and Oceania?
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+Q1: [1], [6]; Q2: [15], [16]; Q3: [7], [14]; Q4: [3], [11]; Q5: [9], [20]; Q6: [8], [10]; Q7: [2], [13]; Q8: [5], [17]; Q9: [4], [19]; Q10: [12], [18]
+
+
+================================================================================
+  TRAIN Example 3
+  Documents: 20 | Prompt chars: 9,339 | Output chars: 150
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to identify which documents are relevant to answering each of the following questions. For each question, list the relevant document IDs.
+Write your answer in the following format:
+Relevant Documents: Q1: [id1], [id2]; Q2: [id3], [id4]; ...
+
+### Input:
+Document [1] (Title: King of Mask Singer): Mystery Music Show: King of Mask Singer () is a South Korean singing competition program presented by Kim Sung-joo, with introductions by voice actor . It airs on MBC on Sunday at 16:50, starting from April 5, 2015 as a part of MBC's "Sunday Night" programming block, along with "Real Men", replacing "Animals".
+
+Document [2] (Title: Sings for Broadside): Sings For Broadside, alternatively known as "Broadside Ballads, Vol. 10", was a 1976 compilation of songs that Phil Ochs had recorded for Broadside Magazine as demonstration recordings or at benefit shows for them. Initially, Ochs had hoped for the magazine to release one single concert, but when the material he presented to them came up far too short for a full LP and not featuring several of his best and well-known numbers, he suggested they splice on whatever they desired. The result was this album, which featured tracks recorded between about 1965 and about 1973.
+
+Document [3] (Title: George W. Bush): George Walker Bush (born July 6, 1946) is an American politician who served as the 43rd President of the United States from 2001 to 2009. He was also the 46th Governor of Texas from 1995 to 2000. After graduating from Yale University in 1968 and Harvard Business School in 1975, he worked in the oil industry. Bush married Laura Welch in 1977 and ran unsuccessfully for the House of Representatives shortly thereafter. He later co-owned the Texas Rangers baseball team before defeating Ann Richards in the 1994 Texas gubernatorial election. Bush was elected president in 2000 after a close and controversial win over Democratic rival Al Gore, becoming the fourth president to be elected while receiving fewer popular votes than his opponent.
+
+Document [4] (Title: Dark Honeymoon): Dark Honeymoon is a 2008 thriller film, starring Lindy Booth, Nick Cornish, Tia Carrere, Daryl Hannah, Roy Scheider and Eric Roberts. It was directed by David O'Malley and released direct-to-video on July 22, 2008.
+
+Document [5] (Title: Cassadaga (album)): Cassadaga is the seventh studio album by Bright Eyes, released on April 10, 2007. Around 25 to 30 songs were recorded in 2006, with 13 of these appearing on the final track list. The album is named after the town of Cassadaga, Florida, a community of mediums and followers of spiritualism.
+
+Document [6] (Title: Unser Mund sei voll Lachens, BWV 110): Unser Mund sei voll Lachens (May our mouth be full of laughter), BWV 110 , is a church cantata by Johann Sebastian Bach. He composed the Christmas cantata in Leipzig for Christmas Day and first performed it on 25 December 1725.
+
+Document [7] (Title: Organized Nature): Organized Nature is a record label founded in the spring of 2005 by San Francisco DJs Gabriel & Dresden. The label is UK based via Gabriel & Dresden's management company and Plastic Fantastic Label Management.
+
+Document [8] (Title: Kim Seung-hyun (basketball)): Kim Seung-hyun (; born November 23, 1978), is a South Korean basketball player. He was a cast member in the variety show "Real Men". In February 2017, he appeared on MBC's variety show "King of Mask Singer" (episode 99) as a contestant.
+
+Document [9] (Title: Cassadaga, Florida): Cassadaga (a Seneca Indian word meaning ""Water beneath the rocks"") is a small unincorporated community located in Volusia County, Florida, United States, just north of Deltona. It is especially known for having a large number of psychics and mediums, and has consequently been named the "Psychic Capital of the World".
+
+Document [10] (Title: Johan Martial): Johan Martial (born 30 May 1991 in Massy) is a French football player who currently plays for Maccabi Petah Tikva. He is a France youth international having earned caps with both the under-18 and under-19 teams. He is also the older brother of Manchester United F.C. forward Anthony Martial.
+
+Document [11] (Title: Tia Carrere): Althea Rae Janairo (born January 2, 1967), known professionally as Tia Carrere, is an American actress, model, voice actress, and singer who obtained her first big break as a regular on the daytime soap opera "General Hospital".
+
+Document [12] (Title: Anthony Martial): Anthony Joran Martial (] ; born 5 December 1995) is a French professional footballer who plays as a forward for English club Manchester United and the France national team. He was the recipient of the 2015 Golden Boy Award for the best under-21 player in Europe.
+
+Document [13] (Title: Gabriel &amp; Dresden): Gabriel & Dresden is the project name of the American DJs and producers Josh Gabriel and Dave Dresden from San Francisco. They collaborated from 2001 to 2008, then again from 2011 to the present. During that time, they have created numerous hit songs and remixes, some of which are considered all-time classics. They won the coveted Winter Music Conference IDMA award for "Best American DJ" twice, in 2007 and 2008, the latter time on the same day that the group split up. The pair reunited in early 2011 and proceeded on a reunion tour, which began at Ruby Skye in San Francisco on March 4, 2011.
+
+Document [14] (Title: Jennifer Tilly): Jennifer Tilly (born Jennifer Ellen Chan; September 16, 1958) is an American-Canadian actress and poker player. She is a World Series of Poker Ladies' Event bracelet winner. She was nominated for an Academy Award for Best Supporting Actress for her role as Olive Neal in the film "Bullets over Broadway" (1994). Her other film roles include "Let It Ride" (1989) "Made in America" (1993), "Bound" (1996), "Liar Liar" (1997) and "Bride of Chucky" (1998). She has done extensive voice-over work including Celia in "Monsters, Inc." (2001). She is the older sister of actress Meg Tilly.
+
+Document [15] (Title: Phil Ochs): Philip David Ochs ( ; December 19, 1940 – April 9, 1976) was an American protest singer (or, as he preferred, a topical singer) and songwriter who was known for his sharp wit, sardonic humor, earnest humanism, political activism, insightful and alliterative lyrics, and distinctive voice. He wrote hundreds of songs in the 1960s and 1970s and released eight albums.
+
+Document [16] (Title: South Berwick, Maine): South Berwick is a town in York County, Maine, United States. The population was 7,220 at the 2010 census. South Berwick is home to Berwick Academy, a private, co-educational university-preparatory day school founded in 1791.
+
+Document [17] (Title: Johann Sebastian Bach): Johann Sebastian Bach (31 March [O.S. 21 March] 1685 28 July 1750) was a German composer and musician of the Baroque period. He is known for instrumental compositions such as the "Brandenburg Concertos" and the "Goldberg Variations", and vocal music such as the "St Matthew Passion" and the Mass in B minor. Since the 19th-century Bach Revival he has been generally regarded as one of the greatest composers of all time.
+
+Document [18] (Title: Great Works River): The Great Works River is a 30.6 mi river in southwestern Maine in the United States. It rises in central York County and flows generally south past North Berwick to meet the tidal part of the Salmon Falls River at South Berwick.
+
+Document [19] (Title: Laura Bush): Laura Lane Welch Bush (born November 4, 1946) is the wife of the 43rd President of the United States, George W. Bush, and was the First Lady from 2001 to 2009.
+
+Document [20] (Title: No Small Affair): No Small Affair is a 1984 American comedy-drama film directed by Jerry Schatzberg and starring Jon Cryer and Demi Moore. Cryer, Jennifer Tilly and Tim Robbins make their film debuts.
+
+Question 1: Johan Martial, is a French football player who currently plays for Maccabi Petah Tikva, and is also the older brother of Manchester United F.C. forward Anthony Martial, a French professional footballer who plays as a forward for which country's national team?
+Question 2: Which former president of the United States, married to Laura Lane Welch Bush, was the 46th Governor of Texas from 1995 to 2000?
+Question 3: For which role was actress who made her debut in the film  No Small Affair nominated for an Academy Award ? 
+Question 4: What programming block are the two shows that Kim Seung-hyun has appeared on?
+Question 5: Which magazine recorded an album by Phil Ochs released the year he died? 
+Question 6: What is the name of the band who released an album named after a city known for its large number of psychics?
+Question 7: In what year did the San Francisco DJs who founded Organized Nature in 2005 first win the Winter Music Conference IDMA award?
+Question 8:  The Great Works River flows to meet the tidal part of the Salmon Falls River at a town with a co-educational university-preparatory day school founded in what year?
+Question 9: Unser Mund sei voll Lachens is a church cantata by a composer born in what year?
+Question 10: What "General Hospital" actress was featured in the 2008 thriller Dark Honeymoon?
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+Q1: [10], [12]; Q2: [3], [19]; Q3: [14], [20]; Q4: [1], [8]; Q5: [2], [15]; Q6: [5], [9]; Q7: [7], [13]; Q8: [16], [18]; Q9: [6], [17]; Q10: [4], [11]
+
+
+################################################################################
+#  EVAL EXAMPLES (from data/multi_hotpotqa_eval_retrieval_n10_suponly_bridge_100.jsonl)
+#  Formatted by: eval script with use_alpaca=True, shots=0
+################################################################################
+
+================================================================================
+  EVAL Example 1
+  Documents: 20 | Prompt chars: 10,159 | Output chars: 150
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to identify which documents are relevant to answering each of the following questions. For each question, list the relevant document IDs.
+Write your answer in the following format:
+Relevant Documents: Q1: [id1], [id2]; Q2: [id3], [id4]; ...
+
+### Input:
+Document [1] (Title: Jörg Leichtfried): Jörg Leichtfried (born 18 June 1967 in Bruck an der Mur, Styria) is an Austrian politician who currently serves as Federal Minister for Transport, Innovation and Technology in the government of Chancellor Christian Kern.
+
+Document [2] (Title: Godiva Chocolatier): Godiva Chocolatier is a manufacturer of premium fine chocolates and related products. Godiva, founded in Belgium in 1926, was purchased by the Turkish Yıldız Holding, owner of the Ülker Group, on November 20, 2007. Godiva owns and operates more than 600 retail boutiques and shops in the United States, Canada, Europe, and Asia and is available via over 10,000 specialty retailers.
+
+Document [3] (Title: Tom Jankiewicz): Thomas Anthony Jankiewicz (September 8, 1963 – January 23, 2013) was an American screenwriter. Jankiewicz was best known for penning the 1997 film, "Grosse Pointe Blank", starring John Cusack, Minnie Driver, Alan Arkin, and Dan Aykroyd. "Grosse Pointe Blank" tells the story of an assassin, played by John Cusack, who returns to his hometown for his 10-year high school reunion.
+
+Document [4] (Title: Bill Pollack): Bill Pollack was a competitor in the early days of the post World War II California sports car culture. Starting his racing career in 1950, he would go on to win the Pebble Beach in an Allard J2 that was owned by Tom Carstens'. Bill also won at other California venues of that time: Pebble Beach, Golden Gate Park, Reno, Torrey Pines, Stockton, Madera, Willow Springs, Palm Springs, and the Santa Barbara road races. He was a contemporary of Phil Hill, who went on to become the first and only U.S. born world grand prix champion.
+
+Document [5] (Title: Silicon Valley (TV series)): Silicon Valley is an American comedy television series created by Mike Judge, John Altschuler and Dave Krinsky. The series focuses on five young men who founded a startup company in Silicon Valley. The series premiered on April 6, 2014 on HBO.
+
+Document [6] (Title: Minnie Driver): Amelia Fiona "Minnie" Driver (born 31 January 1970) is an English actress and singer-songwriter. She was nominated for the Academy Award for Best Supporting Actress for Gus van Sant's "Good Will Hunting" (1997) for her role as Skylar, and for the Emmy Award and Golden Globe for her work in the television series "The Riches" (2007-2008). Her film work includes "Sleepers", "Grosse Pointe Blank", "Tarzan", "Return to Me", "Ella Enchanted", "The Phantom of the Opera", "Conviction", & "Barney's Version". She starred as Fiona Bowa on the NBC sitcom "About a Boy" and currently stars as Maya DiMeo on the critically acclaimed ABC sitcom "Speechless".
+
+Document [7] (Title: Woody Allen): Heywood "Woody" Allen (born Allan Stewart Konigsberg; December 1, 1935) is an American filmmaker, writer, actor, comedian, and musician whose career spans more than six decades.
+
+Document [8] (Title: Christian Kern): Christian Kern ( ] ; born 4 January 1966) is the incumbent Chancellor of Austria and chairman of the Social Democratic Party of Austria (SPÖ).
+
+Document [9] (Title: Ross Pople): Ross Pople (born 11 May 1945) is a New Zealand-born British conductor. He is the principal conductor of the London Festival Orchestra. He has worked with Yehudi Menuhin, Clifford Curzon, David Oistrakh, Kentner, George Malcolm, Sir Adrian Boult, Rudolf Kempe, Benjamin Britten, Witold Lutosławski, Krzysztof Penderecki, Michael Tippett, Georg Solti, Leonard Bernstein, George Benjamin, John Casken, Edwin Roxburgh, Luciano Berio, John Taverner, Malcolm Arnold, Pierre Boulez as well as many other major orchestras, choirs and soloists.
+
+Document [10] (Title: Alice Wetterlund): Alice Wetterlund (born May 16, 1981) is an American stand-up comedian and film and television actress. She played the role of Carla Walton on the HBO sitcom "Silicon Valley".
+
+Document [11] (Title: Adrenaline (album)): Adrenaline is the debut studio album by American alternative metal band Deftones, released in 1995 by Maverick Records. A hidden track on the album, "Fist", was produced by Ross Robinson, while the rest of the album was produced by Terry Date.
+
+Document [12] (Title: Accession of Albania to the European Union): The Republic of Albania is an official candidate for accession to the European Union since June 2014.
+
+Document [13] (Title: Ministry of European Integration (Albania)): The Ministry of European Integration () was a department of the Cabinet of Albania, responsible for integration of the Albania into the European Union.
+
+Document [14] (Title: Julian Allen): Julian Allen (1942–1998) was a British-American illustrator. He covered various "secret history" stories, including the Watergate scandal and the Yom Kippur War. His illustrations appeared in numerous publications, including "Queen", NOVA, "Esquire", "The Observer", "Sports Illustrated", "The New Yorker", "Time", and "The New York Times".
+
+Document [15] (Title: Deftones): Deftones is an American alternative metal band from Sacramento, California, U.S. Formed in 1988, the band was founded by Chino Moreno (lead vocals, rhythm guitar), Stephen Carpenter (lead guitar), Abe Cunningham (drums) and Dominic Garcia (bass). During the group's first five years, the band's lineup changed several times, but stabilized in 1993 when Cunningham rejoined the group after his departure in 1990; by this time, Chi Cheng was the band's bassist. The lineup remained stable for fifteen years, with the exception of keyboardist and turntablist Frank Delgado being added in 1999. The band is known as one of the most experimental groups to have come from the alternative metal music scene. They are sometimes dubbed "the Radiohead of metal" by critics.
+
+Document [16] (Title: Gurney Paragon): Gurney Paragon is a shopping mall at Gurney Drive, George Town, Penang, Malaysia. The shopping mall also carries 1st luxury brands shops in Penang like Victoria's Secret, Michael Kors, H&M, Sephora, Fred Perry, Canali and Godiva.
+
+Document [17] (Title: Phil Hill): Philip Toll Hill Jr. (April 20, 1927 – August 28, 2008) was an American automobile racer and the only American-born driver to win the Formula One World Drivers' Championship (Mario Andretti, an Italian American driver, won the World Drivers' Championship in 1978, but was not born in the United States). He also scored three wins at each of the 24 Hours of Le Mans and 12 Hours of Sebring sports car races.
+
+Document [18] (Title: Orion Pictures): Orion Pictures Corporation is an American motion picture producer and distributor that produced and released films from 1978 until 1999, and was also involved in television production and syndication throughout the 1980s until the early 1990s. It was formed in 1978 as a joint venture between Warner Bros. and three former top-level executives of United Artists. Although it was never a large motion picture producer, Orion achieved a comparatively high reputation for Hollywood quality. Woody Allen, James Cameron, Jonathan Demme, Oliver Stone, and several other prominent directors worked with Orion during its most successful years from 1978 to 1992. Of the films distributed by Orion, four won Academy Awards for Best Picture: "Amadeus" (1984), "Platoon" (1986), "Dances with Wolves" (1990), and "The Silence of the Lambs" (1991). Two other Orion films, "Hannah and Her Sisters" (1986) and "Mississippi Burning" (1988), were nominated for that same category. In 2013, Metro-Goldwyn-Mayer revived the Orion name for television; a year later, Orion Pictures was relaunched by the studio.
+
+Document [19] (Title: Pierre Boulez): Pierre Louis Joseph Boulez CBE (] ; 26 March 1925 – 5 January 2016) was a French composer, conductor, writer and organiser of institutions. He was one of the dominant figures of the post-war classical music world.
+
+Document [20] (Title: Queen (magazine)): Queen (originally The Queen) magazine was a British society publication established by Samuel Beeton in 1861. In 1958, the magazine was sold to Jocelyn Stevens, who dropped the prefix ""The"" and used it as his vehicle to represent the younger side of the British Establishment, sometimes referred to as the "Chelsea Set" under the editorial direction of Beatrix Miller. In 1964 the magazine gave birth to Radio Caroline, the first daytime commercial pirate radio station serving London, England. Stevens sold "Queen" in 1968. From 1970 the new publication became known as Harper's & Queen until the name "Queen" was dropped from the masthead. It is now known as "Harper's Bazaar".
+
+Question 1: When did the HBO series that Alice Wetterlund star in premier?
+Question 2: What distinction about his birth makes the contemporary of Bill Pollack unique as a winner of the Formula One World Drivers' Championship?
+Question 3: Which California band, whose debut album Adrenaline appeared in 1995, has been referred to as "the Radiohead of metal"?
+Question 4: Jullian Allen a Brittish-American Illustrator had some of his Illustration published appear in Queen magazine. In 1970 the magazines name was changed to Harper's and Queen. What is the name of the magazine now ?
+Question 5: What prominent director worked with Orion Pictures and was born in December of 1935?
+Question 6: Which store in Gurney Paragon was founded in Belgium in 1926?
+Question 7: Ross Pople worked with this French dominant figure of the post-war classical music world.
+Question 8:  Thomas Anthony Jankiewicz was best known for penning a film staring an actress who played Fiona Bowa on what NBC sitcom?
+Question 9: What Albanian department is reasonbile for an international integration effort first started in 2014?
+Question 10: Which Austrian Chancellor does Jörg Leichtfried serve under?
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+Q1: [5], [10]; Q2: [4], [17]; Q3: [11], [15]; Q4: [14], [20]; Q5: [7], [18]; Q6: [2], [16]; Q7: [9], [19]; Q8: [3], [6]; Q9: [12], [13]; Q10: [1], [8]
+
+
+================================================================================
+  EVAL Example 2
+  Documents: 20 | Prompt chars: 9,834 | Output chars: 150
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to identify which documents are relevant to answering each of the following questions. For each question, list the relevant document IDs.
+Write your answer in the following format:
+Relevant Documents: Q1: [id1], [id2]; Q2: [id3], [id4]; ...
+
+### Input:
+Document [1] (Title: Nicholas Scibetta): Nicholas Scibetta, also known as "Little Nicky" (died 1978), was a Sicilian American mobster who was the nephew of Joseph and John Zicarelli, the brother-in-law of Sammy Gravano and uncle of mafioso Gerard Gravano, who was a Gambino crime family mob associate who was later marked as a stool pigeon by fellow crime family members.
+
+Document [2] (Title: J. C. Watts): Julius Caesar "J. C." Watts Jr. (born November 18, 1957) is an American politician from Oklahoma who was a college football quarterback for the Oklahoma Sooners and later played professionally in the Canadian Football League. Watts served in the U.S. House of Representatives from 1995 to 2003 as a Republican, representing Oklahoma's 4th Congressional District.
+
+Document [3] (Title: Raymond S. Persi): Raymond S. Persi is an American animator, director, screenwriter, producer, storyboard artist and voice actor. He has directed many episodes of "The Simpsons", including "Mobile Homer", "The Girl Who Slept Too Little", "The Monkey Suit", "Little Big Girl", "24 Minutes", "Love, Springfieldian Style" and the Emmy-award winning "The Seemingly Never-Ending Story". Persi went on to work as a sequence director for "The Simpsons Movie" (2007).
+
+Document [4] (Title: The Ed Sullivan Show): The Ed Sullivan Show is an American TV variety show that ran on CBS from Sunday June 20, 1948, to Sunday June 6, 1971, and was hosted by New York entertainment columnist Ed Sullivan. It was replaced in September 1971 by the "CBS Sunday Night Movie".
+
+Document [5] (Title: Mittagong): Mittagong is a town located in the Southern Highlands of New South Wales, Australia, in Wingecarribee Shire. The town acts as the gateway to the Southern Highlands when coming from Sydney. Mittagong is situated at an elevation of 635 m . The town is close to Bowral, Berrima, Moss Vale and the Northern Villages such as Yerrinbool and Colo Vale. Moreover, Mittagong is home to many wineries of the Southern Highlands which has been a recent growing wine and cellar door region.
+
+Document [6] (Title: Willow Vale, New South Wales (Wingecarribee)): Willow Vale is a Northern Village of the Southern Highlands of New South Wales, Australia, in Wingecarribee Shire. It is located 1 km north of Mittagong and is often considered part of Braemar along with its neighbour Balaclava. At the 2016 census , Willow Vale had a population of 717.
+
+Document [7] (Title: Hey Ya!): "Hey Ya!" is a song written and produced by André 3000 for his 2003 album "The Love Below", part of the hip hop duo OutKast's double album "Speakerboxxx/The Love Below". "Hey Ya!" takes influence from funk, rap and rock music. Its music video features a live performance by a band, all eight of whose members are played by André 3000, that mimics the Beatles' 1964 performance on "The Ed Sullivan Show". The song received praise from contemporary music critics, and won the award for Best Urban/Alternative Performance at the 46th Grammy Awards. His version of the song has also appeared on the soundtrack of
+
+Document [8] (Title: James Cromwell): James Oliver Cromwell (born January 27, 1940) is an American actor. Some of his more notable films include "" (1996), "L.A. Confidential" (1997), "The Green Mile" (1999), "Space Cowboys" (2000), "The Sum of All Fears" (2002), "I, Robot" (2004), "The Longest Yard" (2005), "The Queen" (2006), "Secretariat" (2010), and "The Artist" (2011), as well as the television series "Six Feet Under" (2003–2005), "24" (2007) and "Halt and Catch Fire" (2015).
+
+Document [9] (Title: Sammy Gravano): Salvatore "Sammy the Bull" Gravano (born March 12, 1945) is a former underboss of the Gambino crime family. He is known as the man who helped bring down John Gotti, the family's boss, by agreeing to testify against him and other mobsters in a deal in which he confessed to involvement in 19 murders.
+
+Document [10] (Title: Mmoloki Nogeng): Mmoloki Nogeng (born May 30, 1982) is a boxer from Botswana. Nogeng won a bronze medal at the 2006 Commonwealth Games in Melbourne, Australia, losing to Bruno Julie in the semi-finals of the bantamweight (54 kg) category.
+
+Document [11] (Title: Giovanna d'Arco): Giovanna d'Arco ("Joan of Arc") is an operatic "dramma lirico" with a prologue and three acts by Giuseppe Verdi set to an Italian libretto by Temistocle Solera, who had prepared the libretti for both "Nabucco" and "I Lombardi". It is Verdi's seventh opera.
+
+Document [12] (Title: Princess Mafalda of Savoy): Princess Mafalda of Savoy (2 November 1902 – 27 August 1944) was the second daughter of King Victor Emmanuel III of Italy and his wife Elena of Montenegro. The future King Umberto II of Italy was her younger brother.
+
+Document [13] (Title: Roxie Hart (film)): Roxie Hart, also known as Chicago or Chicago Gal, is a 1942 American comedy film directed by William A. Wellman and starring Ginger Rogers, Adolphe Menjou, George Montgomery, Nigel Bruce, Phil Silvers, William Frawley and Spring Byington. The film is an adaptation of the 1926 play "Chicago" by Maurine Dallas Watkins, a journalist who had found her inspiration in two real-life Chicago trials she had covered for the press. The play had already been adapted once before, as the 1927 silent movie "Chicago", and it would later be adapted as the 1975 musical "Chicago", which in turn was adapted as the 2002 film "Chicago".
+
+Document [14] (Title: Giuseppe Verdi): Giuseppe Fortunino Francesco Verdi (] ; 9 or 10 October 1813 – 27 January 1901) was an Italian opera composer.
+
+Document [15] (Title: Wade Watts): Wade Watts (23 September 1919 – 13 December 1998) was an African American gospel preacher and civil rights activist from Oklahoma. He served as the state president of the Oklahoma chapter of the NAACP for sixteen years, challenging the Ku Klux Klan through Christian love doctrine. He worked with Thurgood Marshall and developed a friendship with Martin Luther King during the American civil rights movement, and has been cited as a mentor by the current leader of the NAACP in Oklahoma, Miller Newman, and his nephew, former congressman, J. C. Watts.
+
+Document [16] (Title: Phil Silvers): Phil Silvers (May 11, 1911 – November 1, 1985) was an American entertainer and comedic actor, known as "The King of Chutzpah". He is best known for starring in "The Phil Silvers Show", a 1950s sitcom set on a U.S. Army post in which he played Master Sergeant Ernest (Ernie) Bilko.
+
+Document [17] (Title: Boxing at the 2006 Commonwealth Games): Boxing at the 2006 Commonwealth Games was held at the Melbourne Exhibition Centre. It was one of the male-only sports at the Commonwealth Games, the other being Rugby Sevens.
+
+Document [18] (Title: Umberto II of Italy): Umberto II (Italian: "Umberto Nicola Tommaso Giovanni Maria di Savoia" ; 15 September 190418 March 1983), was the last King of Italy. He reigned for 34 days, from 9 May 1946 to 12 June 1946, although he had been "de facto" head of state since 1944, and was nicknamed the May King (Italian: Re di Maggio ).
+
+Document [19] (Title: Secretariat (film)): Secretariat is a 2010 American biographical sports drama film produced and released by Walt Disney Pictures, written by Mike Rich and Sheldon Turner with music by Nick Glennie-Smith and directed by Randall Wallace. The film chronicles the life of Thoroughbred race horse Secretariat, winner of the Triple Crown in 1973. Diane Lane portrays Secretariat's owner, Penny Chenery, and John Malkovich plays his trainer, Lucien Laurin. Filming took place on location in Louisville and Lexington, Kentucky, and around Lafayette, Louisiana and Carencro, Louisiana. The film premiered at the Hollywood premiere in September 30, 2010 and was released on October 8, 2010 by Walt Disney Pictures. The film received mixed reviews from critics and earned $60.3 million on a $35 million budget.
+
+Document [20] (Title: Little Big Girl): "Little Big Girl" is the twelfth episode of "The Simpsons"<nowiki>'</nowiki> eighteenth season. It originally aired on the Fox network in the United States on February 11, 2007. It was written by Don Payne, and directed by Raymond S. Persi. Natalie Portman guest starred as a new character, Darcy. The title is a play on the Dustin Hoffman movie "Little Big Man". The last time the title was parodied was in season 11's "Little Big Mom."
+
+Question 1: Giovanna d'Arco is an opera that was created by the composer of what nationality?
+Question 2: James Cromwell stars in which movie that chronicles the life of Thoroughbred race horse?
+Question 3: Which former college football quarterback is the nephew Wade Watts?
+Question 4: Roxie Hart starred the entertainer and comedic actor who had what nickname?
+Question 5: Little Big Girl was a Simpsons episode directed by the animator and artist of what nationality?
+Question 6: Hey Ya is a song performed on The Ed Sullivan Show on CBS by which hip hop artist in 2003?
+Question 7: What is a popular industry in the neighborhood of Willow Vale, New South Wales?
+Question 8: The younger brother, who became king, of Princess Mafalda of Savoy reigned for how many days?
+Question 9: Nicholas Scibetta's hit man brother-in-law, who confessed to being involved in the murder of 19 people, helped prosecutors convict what Gambino family boss?
+Question 10: where was the 2006 Commonwealth Games that Mmoloki Nogeng won a bronze medal at held?
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+Q1: [11], [14]; Q2: [8], [19]; Q3: [2], [15]; Q4: [13], [16]; Q5: [3], [20]; Q6: [4], [7]; Q7: [5], [6]; Q8: [12], [18]; Q9: [1], [9]; Q10: [10], [17]
+
+
+================================================================================
+  EVAL Example 3
+  Documents: 20 | Prompt chars: 11,053 | Output chars: 150
+================================================================================
+
+--- MODEL INPUT (prompt) ---
+
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+Use the given documents to identify which documents are relevant to answering each of the following questions. For each question, list the relevant document IDs.
+Write your answer in the following format:
+Relevant Documents: Q1: [id1], [id2]; Q2: [id3], [id4]; ...
+
+### Input:
+Document [1] (Title: BAE Systems Hawk): The BAE Systems Hawk is a British single-engine, jet-powered advanced trainer aircraft. It was first flown at Dunsfold, Surrey, in 1974 as the Hawker Siddeley Hawk, and subsequently produced by its successor companies, British Aerospace and BAE Systems, respectively. It has been used in a training capacity and as a low-cost combat aircraft.
+
+Document [2] (Title: Parks and Recreation): Parks and Recreation is an American political comedy television sitcom starring Amy Poehler as Leslie Knope, a perky, mid-level bureaucrat in the Parks Department of Pawnee, a fictional town in Indiana. Created by Greg Daniels and Michael Schur, the series aired on NBC from April 9, 2009 to February 24, 2015, for 125 episodes, over seven seasons. It was written by the same writers and uses the same filming style as "The Office", with the same implication of a documentary crew filming everyone. The ensemble and supporting cast feature Rashida Jones as Ann Perkins, Paul Schneider as Mark Brendanawicz, Aziz Ansari as Tom Haverford, Nick Offerman as Ron Swanson, Aubrey Plaza as April Ludgate, Chris Pratt as Andy Dwyer, Adam Scott as Ben Wyatt, Rob Lowe as Chris Traeger, Jim O'Heir as Garry "Jerry" or "Larry" Gergich, Retta as Donna Meagle, and Billy Eichner as Craig Middlebrooks.
+
+Document [3] (Title: Harry Winston, Inc.): Harry Winston, Inc. is an American luxury jeweler and producer of Swiss timepieces. Named after its founder, the jeweler Harry Winston, the company has its headquarters in New York City.
+
+Document [4] (Title: Raids on Lochaber and Shiramore): The Raids on Lochaber and Shiramore took place in the Scottish Highlands between 22 May and 31 August 1746 and were part of the closing operations of the British-Hanoverian Government to bring to an end the Jacobite rising of 1745. Sometimes referred to as the "mopping up" operations many rebels surrendered themselves and their arms, while others were captured and punished. It also included the hunt for the Jacobite leader "Bonnie Prince" Charles Edward Stuart otherwise known as the "Young Pretender". Most of the work was done on behalf of the Government by the Independent Highland Companies of militia and also the Campbell of Argyll Militia.
+
+Document [5] (Title: Mark Brendanawicz): Mark Brendanawicz is a fictional character in the NBC comedy series "Parks and Recreation". He is the city planner for Pawnee, Indiana, as well as Leslie Knope's colleague and one of Ann Perkins' ex-boyfriends. He is portrayed by Paul Schneider, who left "Parks and Recreation" at the end of the second season; despite the producers' plans to the contrary, Schneider never reprised the role in any later seasons, and the show made absolutely no references to the character after his departure.
+
+Document [6] (Title: The New Yorker): The New Yorker is an American magazine of reportage, commentary, criticism, essays, fiction, satire, cartoons, and poetry. It is published by Condé Nast. Started as a weekly in 1925, the magazine is now published 47 times annually, with five of these issues covering two-week spans.
+
+Document [7] (Title: Jacobite rising of 1745): The Jacobite rising of 1745 (Scottish Gaelic: "Bliadhna Theàrlaich" ] , "The Year of Charles") was the attempt by Charles Edward Stuart to regain the British throne for the exiled House of Stuart. The rising occurred during the War of the Austrian Succession, when most of the British Army was on the European continent. Charles Edward Stuart, commonly known as "Bonnie Prince Charlie" or "the Young Pretender", sailed to Scotland and raised the Jacobite standard at Glenfinnan in the Scottish Highlands, where he was supported by a gathering of Highland clansmen. The march south began with an initial victory at Prestonpans near Edinburgh. The Jacobite army, now in bold spirits, marched onwards to Carlisle, over the border in England. When it reached Derby, some British divisions were recalled from the Continent and the Jacobite army retreated north to Inverness where the last battle on Scottish soil took place on a nearby moor at Culloden. The Battle of Culloden ended with the final defeat of the Jacobite cause. Charles Edward Stuart fled with a price on his head before finally sailing to France.
+
+Document [8] (Title: Bambi, a Life in the Woods): Bambi, a Life in the Woods, originally published in Austria as Bambi: Eine Lebensgeschichte aus dem Walde is a 1923 Austrian novel written by Felix Salten and published by Ullstein Verlag. The novel traces the life of Bambi, a male roe deer, from his birth through childhood, the loss of his mother, the finding of a mate, the lessons he learns from his father and experience about the dangers posed by human hunters in the forest.
+
+Document [9] (Title: Reese Witherspoon): Laura Jeanne Reese Witherspoon ( ; born March 22, 1976) is an American actress, producer, and entrepreneur. Born in New Orleans and raised in Tennessee, she began her career as a child actress, making her professional screen debut in "The Man in the Moon" (1991), for which she was nominated for a Young Artist Award. Following breakout roles in "" (1992) and "Jack the Bear" (1993), she starred in the comedy-drama "Pleasantville" (1998), for which she won the Young Hollywood Award for Breakthrough Performance. Her leading role of Tracy Flick in "Election" (1999) was nominated for a Golden Globe Award.
+
+Document [10] (Title: Maximilian Büsser): Maximilian Büsser is a Swiss entrepreneur and founder of the avant-garde boutique watch brand MB&F (2005–present). Prior to MB&F he was the CEO of Harry Winston, Inc. Rare Timepieces (1998 - 2005) and a senior manager at Jaeger-LeCoultre (1991 - 1998). Büsser has lived in Dubai since 2014.
+
+Document [11] (Title: Eric S. Pistorius): Eric S. Pistorius (born 1956), is a Circuit court Judge of the Seventh Circuit of Illinois, residing from Jerseyville, Illinois. He used to be an attorney at law for his law firm and specialized in the areas of: personal injury, litigation, criminal defense, and collections.
+
+Document [12] (Title: Overnight Delivery): Overnight Delivery is a 1998 romantic comedy film directed by Jason Bloom. It was rated PG-13 by the MPAA and released direct-to-video. It featured Reese Witherspoon and Paul Rudd, prior to both becoming considerably bigger film stars.
+
+Document [13] (Title: Midland Regional Hospital, Portlaoise): The Midlands Regional Hospital, Portlaoise is a public hospital located in Portlaoise, County Laois, Ireland. It is managed by the Irish Government's Health Service Executive and provides acute-care hospital services, including a 24-hour emergency department, for the population of County Laois and the Irish Midlands. In 2008, the hospital served 44,645 out-patients, and 10,951 in-patients, with an average stay of 3.8 nights. 94.6% of admissions were made via the accident and emergency department or 10,112 patients. In 2007, 40,114 patients presented to the emergency department. The hospital saw 3,568 day cases in the same year.
+
+Document [14] (Title: Felix Salten): Felix Salten (6 September 1869 – 8 October 1945) was an Austrian author and critic in Vienna. His most famous work is "Bambi, a Life in the Woods" (1923).
+
+Document [15] (Title: Fleet Requirements and Aircraft Direction Unit): The Fleet Requirements and Air Direction Unit (FRADU) was a unit of the Royal Navy's Fleet Air Arm operated by the contractor Serco Defence and Aerospace. It was established in 1972. It was most recently equipped with 13 BAE Systems Hawk T1 advanced jet trainer aircraft on lease to the Royal Navy from the Royal Air Force, based at RNAS Culdrose in Cornwall. Two of these aircraft were permanently detached to Naval Flying Standards Flight (fixed wing) at RNAS Yeovilton where they are flown by RN pilots, but maintained by Serco engineers.
+
+Document [16] (Title: Circuit court): Circuit court is the name of court systems in several common law jurisdictions. The core concept of circuit courts requires judges to travel to different locales in order to ensure wide visibility and understanding of cases in a region. More generally, some modern circuit courts may also refer to a court which merely holds trials for cases of multiple locations in some rotation.
+
+Document [17] (Title: Taipa): Taipa is an island in Macau, presently united by an artificial landfill to the island of Coloane. Administratively, Taipa constitutes a "freguesia" (civil parish) named Freguesia de Nossa Senhora do Carmo.
+
+Document [18] (Title: Government of Ireland): The Government of Ireland (Irish: "Rialtas na hÉireann" ) is the cabinet that exercises executive authority in the Republic of Ireland.
+
+Document [19] (Title: Barry Werth): Barry Werth is an American author and journalist. His work has appeared in "The New York Times", "The New Yorker", "GQ", the "Smithsonian", and the "MIT Technology Review". He has also served as an instructor in journalism at Smith College, Mount Holyoke College, and Boston University.
+
+Document [20] (Title: Macau): Macau ( ), also spelled Macao and officially the Macao Special Administrative Region of the People's Republic of China, is an autonomous region on the western side of the Pearl River estuary in East Asia. Macau is bordered by the city of Zhuhai in Mainland China to the north and the Pearl River Delta to the east and south. Hong Kong lies about 64 km to its east across the Delta. With a population of 650,900 living in an area of 30.5 km2 , it is the most densely populated region in the world. A former Portuguese colony, it was returned to Chinese sovereignty on 20 December 1999.
+
+Question 1: Who was attempting to regain the British throne until the Raids on Lachaber and Shiramore shut down his operations?
+Question 2: What was the concept of the business Eric S .Pistorius worked for after being an attorney?
+Question 3: The Midland Regional Hospital in managed by what cabinet that exercises executive authority in the Republic of Ireland?
+Question 4: Which actress played a character that dated Mark Brendanawicz?
+Question 5: Maximilian Büsser was the CEO of a company that produced timepieces from which country?
+Question 6: What was the home city of the author of the famous novel tracing the life of a male roe deer from his birth onward?
+Question 7: Which actor/actress from Overnight Delivery was born in New Orleans?
+Question 8: What magazine was started in 1925 and features the work of Barry Werth?
+Question 9: Which country is the Taipa island part of?
+Question 10: In which Navy was the single-engine BAE Systems Hawk operated?
+
+### Response:
+
+--- EXPECTED OUTPUT (completion) ---
+
+Q1: [4], [7]; Q2: [11], [16]; Q3: [13], [18]; Q4: [2], [5]; Q5: [3], [10]; Q6: [8], [14]; Q7: [9], [12]; Q8: [6], [19]; Q9: [17], [20]; Q10: [1], [15]
+
+

@@ -12,7 +12,7 @@ import hashlib
 import random
 import re
 from pathlib import Path
-from lib.io import load_jsonl, save_results, format_alpaca_prompt
+from lib.io import load_jsonl, save_results, format_alpaca_prompt, insert_dummy_tokens
 from lib.metrics import exact_match, substring_match, token_f1, max_over_answers, aggregate
 
 try:
@@ -148,7 +148,8 @@ def compute_metrics(prediction, answers):
 
 
 def load_dataset_for_eval(dataset_name, max_samples=None, shots=2, num_docs=1000,
-                          query_position="after", use_alpaca=True, no_titles=False):
+                          query_position="after", use_alpaca=True, no_titles=False,
+                          before_dummy=0, after_dummy=0):
     config = DATASET_CONFIG[dataset_name]
     # Trained models (alpaca format) use 0 shots to match training data
     if use_alpaca and shots > 0:
@@ -205,6 +206,8 @@ def load_dataset_for_eval(dataset_name, max_samples=None, shots=2, num_docs=1000
                     input_text = f"Question: {s['question']}\n\n{context}\n\nQuestion: {s['question']}"
                 else:
                     input_text = f"{context}\n\nQuestion: {s['question']}"
+            if before_dummy > 0 or after_dummy > 0:
+                input_text = insert_dummy_tokens(input_text, before_dummy, after_dummy)
             prompt = format_alpaca_prompt(INSTRUCTION, input_text)
         else:
             # Original HELMET format (no alpaca wrapper)
@@ -237,6 +240,10 @@ def main():
                         help="Omit document titles from prompts")
     parser.add_argument("--use-alpaca", action="store_true",
                         help="Force alpaca prompt format (for full FT models without --lora-path)")
+    parser.add_argument("--before-dummy", type=int, default=0,
+                        help="Number of dummy token repetitions to insert before documents")
+    parser.add_argument("--after-dummy", type=int, default=0,
+                        help="Number of dummy token repetitions to insert after documents")
     parser.add_argument("--enable-thinking", action="store_true",
                         help="Enable thinking mode: append <think> to prompt, parse answer after </think>")
     parser.set_defaults(max_tokens=20, output_file="outputs/helmet_rag_results.json")
@@ -272,7 +279,9 @@ def main():
         try:
             examples = load_dataset_for_eval(ds_name, args.max_test_samples, args.shots, args.num_docs,
                                                 query_position=args.query_position, use_alpaca=use_alpaca,
-                                                no_titles=args.no_titles)
+                                                no_titles=args.no_titles,
+                                                before_dummy=args.before_dummy,
+                                                after_dummy=args.after_dummy)
         except FileNotFoundError as e:
             print(f"  {e}")
             continue

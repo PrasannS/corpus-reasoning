@@ -19,7 +19,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 sys.path.insert(0, str(Path(__file__).parent))
 from lib.io import load_jsonl, save_results
-from lib.io import format_alpaca_prompt
+from lib.io import format_alpaca_prompt, insert_dummy_tokens
 from lib.metrics import exact_match, substring_match, token_f1, max_over_answers, aggregate
 from lib.chunked_attention import (
     DOC_START, DOC_END, setup_tokenizer, wrap_documents,
@@ -95,12 +95,15 @@ def generate_chunked(model, tokenizer, input_ids, doc_start_id, doc_end_id,
 
 
 def load_helmet_examples(dataset_name, num_docs, max_samples, shots,
-                         query_position="after", use_alpaca=True, no_titles=False):
+                         query_position="after", use_alpaca=True, no_titles=False,
+                         before_dummy=0, after_dummy=0):
     """Load HELMET eval data and build prompts with doc boundary tokens."""
     from evaluate_helmet_rag import load_dataset_for_eval
     raw_examples = load_dataset_for_eval(dataset_name, max_samples, shots, num_docs,
                                           query_position=query_position, use_alpaca=use_alpaca,
-                                          no_titles=no_titles)
+                                          no_titles=no_titles,
+                                          before_dummy=before_dummy,
+                                          after_dummy=after_dummy)
 
     # Wrap documents with boundary tokens for chunked attention.
     wrapped = []
@@ -110,7 +113,8 @@ def load_helmet_examples(dataset_name, num_docs, max_samples, shots,
     return wrapped
 
 
-def load_alpaca_examples(path, max_samples, query_position="after"):
+def load_alpaca_examples(path, max_samples, query_position="after",
+                         before_dummy=0, after_dummy=0):
     """Load alpaca-format JSONL and build prompts with doc boundary tokens."""
     examples = load_jsonl(path)
     if max_samples and len(examples) > max_samples:
@@ -121,6 +125,8 @@ def load_alpaca_examples(path, max_samples, query_position="after"):
     result = []
     for ex in examples:
         input_text = reorder_query(ex["input"], query_position)
+        if before_dummy > 0 or after_dummy > 0:
+            input_text = insert_dummy_tokens(input_text, before_dummy, after_dummy)
         wrapped_input = wrap_documents(input_text)
         prompt = format_alpaca_prompt(ex["instruction"], wrapped_input)
         answers = ex["output"] if isinstance(ex["output"], list) else [ex["output"]]
@@ -193,6 +199,10 @@ def main():
                         help="Omit document titles from prompts")
     parser.add_argument("--use-alpaca", action="store_true",
                         help="Force alpaca prompt format (for full FT models without --lora-path)")
+    parser.add_argument("--before-dummy", type=int, default=0,
+                        help="Number of dummy token repetitions to insert before documents")
+    parser.add_argument("--after-dummy", type=int, default=0,
+                        help="Number of dummy token repetitions to insert after documents")
     parser.add_argument("--enable-thinking", action="store_true",
                         help="Enable Qwen thinking mode: generate <think>...</think> then answer")
     args = parser.parse_args()
@@ -239,10 +249,14 @@ def main():
         if source_type == "helmet":
             examples = load_helmet_examples(source, args.num_docs, args.max_test_samples, args.shots,
                                             query_position=args.query_position, use_alpaca=use_alpaca,
-                                            no_titles=args.no_titles)
+                                            no_titles=args.no_titles,
+                                            before_dummy=args.before_dummy,
+                                            after_dummy=args.after_dummy)
         else:
             examples = load_alpaca_examples(source, args.max_test_samples,
-                                            query_position=args.query_position)
+                                            query_position=args.query_position,
+                                            before_dummy=args.before_dummy,
+                                            after_dummy=args.after_dummy)
 
         print(f"  {len(examples)} examples")
         results = []

@@ -6,3 +6,5 @@ __pycache__/
 wandb/
 cache/
 .claude/
+last_run_prepared/
+debug/

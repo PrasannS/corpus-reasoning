@@ -43,12 +43,14 @@ def wrap_documents(text: str) -> str:
     else:
         doc_section = text
 
-    # Split at document boundaries and wrap each
-    parts = re.split(r'\n\n(?=Document \(Title:)', doc_section)
+    # Split at all \n\n boundaries and wrap document blocks.
+    # Non-document text (e.g. dummy tokens) stays unwrapped so chunked
+    # attention treats it like query/instruction tokens.
+    parts = doc_section.split("\n\n")
     wrapped = []
     for p in parts:
         p = p.strip()
-        if p.startswith("Document ("):
+        if p.startswith(("Document (", "Document [", "Document:")):
             wrapped.append(f"{DOC_START}{p}{DOC_END}")
         elif p:
             wrapped.append(p)

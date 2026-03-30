@@ -1,0 +1,46 @@
+base_model: Qwen/Qwen3.5-0.8B-Base
+
+datasets:
+  - path: data/hotpotqa_train_k20_shuffled_retrieval_bridge_5000_qboth.jsonl
+    type: alpaca
+    ds_type: json
+
+val_set_size: 0.0
+output_dir: ./outputs/hotpotqa-k20-std-qboth-qwen-fullft-wd01-frozen
+
+wandb_project: corpus-reasoning
+wandb_name: std_qboth_hotpotqa_k20_5k_qwen_fullft_wd01_frozen
+
+# Task-specific — standard attention, full FT
+sequence_len: 8192
+micro_batch_size: 1
+gradient_accumulation_steps: 8
+num_epochs: 1
+learning_rate: 5e-5
+sample_packing: false
+eval_sample_packing: false
+flash_attention: false
+query_position: both
+standard_attention: true
+train_on_inputs: false
+
+# Full fine-tuning with frozen embeddings
+unfrozen_parameters:
+  - "model.layers."
+  - "model.norm."
+optimizer: adamw_8bit
+lr_scheduler: cosine
+bf16: auto
+tf32: true
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+logging_steps: 1
+saves_per_epoch: 0
+save_strategy: 'no'
+evals_per_epoch: 0
+warmup_ratio: 0.1
+weight_decay: 0.1
+# no deepspeed — use DDP for frozen params compatibility
+special_tokens:
+  pad_token: "<|endoftext|>"

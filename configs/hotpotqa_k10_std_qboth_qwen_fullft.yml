@@ -1,0 +1,41 @@
+base_model: Qwen/Qwen3.5-0.8B-Base
+
+datasets:
+  - path: data/hotpotqa_train_k10_shuffled_retrieval_bridge_5000_qboth.jsonl
+    type: alpaca
+    ds_type: json
+
+val_set_size: 0.0
+output_dir: ./outputs/hotpotqa-k10-std-qboth-qwen-fullft
+
+wandb_project: corpus-reasoning
+wandb_name: std_qboth_hotpotqa_k10_5k_qwen_fullft
+
+# Task-specific — standard attention, full FT
+sequence_len: 4096
+micro_batch_size: 1
+gradient_accumulation_steps: 8
+num_epochs: 1
+learning_rate: 1e-5
+sample_packing: false
+eval_sample_packing: false
+flash_attention: false
+query_position: both
+standard_attention: true
+train_on_inputs: false
+
+# Full fine-tuning (no adapter)
+optimizer: adamw_8bit
+lr_scheduler: cosine
+bf16: auto
+tf32: true
+gradient_checkpointing: true
+logging_steps: 1
+saves_per_epoch: 0
+save_strategy: 'no'
+evals_per_epoch: 0
+warmup_ratio: 0.1
+weight_decay: 0
+deepspeed: configs/deepspeed_zero2.json
+special_tokens:
+  pad_token: "<|endoftext|>"
