@@ -29,6 +29,11 @@ from lib.metrics import (
     parse_doc_ids, retrieval_exact_match, retrieval_recall,
     retrieval_precision, retrieval_f1, aggregate,
 )
+from lib.prompts import (
+    RETRIEVAL_INSTRUCTION_SINGLE,
+    RETRIEVAL_INSTRUCTION_MULTI_DOC,
+    RETRIEVAL_INSTRUCTION_MULTI_QUERY,
+)
 
 try:
     from vllm import SamplingParams
@@ -36,40 +41,26 @@ try:
 except ImportError:
     SamplingParams = None
 
-# Must match training data instructions (from generate_*_data.py --retrieval)
-INSTRUCTION_SINGLE = (
-    "Use the given documents to identify which document is most relevant to "
-    "answering the question.\n"
-    "Write your answer in the following format:\nRelevant Document: [id]"
-)
-INSTRUCTION_MULTI_DOC = (
-    "Use the given documents to identify which documents are relevant to "
-    "answering the question. List all relevant document IDs.\n"
-    "Write your answer in the following format:\nRelevant Documents: [id1], [id2]"
-)
-INSTRUCTION_MULTI_QUERY = (
-    "Use the given documents to identify which documents are relevant to "
-    "answering each of the following questions. For each question, list the "
-    "relevant document IDs.\n"
-    "Write your answer in the following format:\n"
-    "Relevant Documents: Q1: [id1], [id2]; Q2: [id3], [id4]; ..."
-)
-
-# Map task names to instructions
+# Map task names to their retrieval instructions (from lib/prompts.py)
 TASK_INSTRUCTIONS = {
-    "nq": INSTRUCTION_SINGLE,
-    "hotpotqa": INSTRUCTION_MULTI_DOC,
-    "multi-hotpotqa": INSTRUCTION_MULTI_QUERY,
+    "nq": RETRIEVAL_INSTRUCTION_SINGLE,
+    "hotpotqa": RETRIEVAL_INSTRUCTION_MULTI_DOC,
+    "multi-hotpotqa": RETRIEVAL_INSTRUCTION_MULTI_QUERY,
 }
 
 
 def detect_task(examples):
-    """Auto-detect task type from data format."""
+    """Auto-detect task type from data format.
+
+    Inspects the first example's output to determine the task:
+    - "Q1: [3], [7]; Q2: ..." → multi-hotpotqa (per-query retrieval)
+    - "[3], [7]" (2+ IDs) → hotpotqa (multi-doc retrieval)
+    - "[3]" (1 ID) → nq (single-doc retrieval)
+    """
     ex = examples[0]
     output = ex["output"]
     if "Q1:" in output or "Q2:" in output:
         return "multi-hotpotqa"
-    # Count gold IDs: 1 = NQ, 2+ = HotpotQA
     ids = parse_doc_ids(output)
     return "nq" if len(ids) <= 1 else "hotpotqa"
 
@@ -83,15 +74,23 @@ def extract_after_thinking(text):
 
 
 def parse_retrieval_output(output):
-    """Parse document IDs from model output, trying multiple strategies."""
+    """Parse document IDs from model output, trying multiple strategies.
+
+    The model may output IDs in different formats depending on whether
+    thinking mode is enabled and how it phrases the response:
+      1. Plain: "[3], [7]"
+      2. With prefix: "Relevant Documents: [3], [7]"
+      3. After thinking: "<think>reasoning...</think>[3], [7]"
+    We try stripping each layer and parse whatever remains.
+    """
     text = output.strip()
 
-    # Try extracting after </think> tag
+    # Strategy 1: strip thinking block if present
     after_think = extract_after_thinking(text)
     if after_think:
         text = after_think
 
-    # Try prefix removal
+    # Strategy 2: strip "Relevant Document(s):" prefix
     for prefix in ["Relevant Documents:", "Relevant Document:", "relevant documents:",
                    "relevant document:"]:
         idx = text.find(prefix)
@@ -99,7 +98,7 @@ def parse_retrieval_output(output):
             text = text[idx + len(prefix):].strip()
             break
 
-    # Take first line only
+    # Only use the first line (model sometimes generates extra text)
     text = text.split("\n")[0].strip()
 
     return text, parse_doc_ids(text)
@@ -193,15 +192,18 @@ def main():
     fmt_label = "alpaca" if use_alpaca else "plain"
     print(f"  Prompt format: {fmt_label}")
 
-    # Build prompts
+    # --- Build prompts and parse gold labels from the pre-generated JSONL ---
+    # The JSONL was produced by generate_*_data.py with --retrieval, so each
+    # example has an "input" (docs + question) and "output" (gold doc IDs).
     prompts = []
     gold_data = []
     for ex in raw:
         input_text = ex["input"]
 
-        # Apply query position transformation
+        # Apply query position transformation (reorder question vs documents).
+        # Training data always has question after docs, but eval can test other positions.
         if task == "multi-hotpotqa":
-            # Last block is questions, rest is context
+            # Multi-query: questions block starts at "\nQuestion 1:"
             sep_point = input_text.rfind("\nQuestion 1:")
             if sep_point >= 0:
                 context_part = input_text[:sep_point]
@@ -215,7 +217,7 @@ def main():
             elif args.query_position == "both":
                 input_text = f"{questions_part.strip()}\n\n{context_part}\n\n{questions_part.strip()}"
         else:
-            # Single question: last part after \n\nQuestion:
+            # Single-query: question is after the last "\n\nQuestion:" separator
             parts = input_text.rsplit("\n\nQuestion:", 1)
             if len(parts) == 2:
                 context_part = parts[0]
@@ -225,9 +227,11 @@ def main():
                 elif args.query_position == "both":
                     input_text = f"{question_part}\n\n{context_part}\n\n{question_part}"
 
+        # Optionally insert dummy "* " tokens before/after docs (positional ablation)
         if args.before_dummy > 0 or args.after_dummy > 0:
             input_text = insert_dummy_tokens(input_text, args.before_dummy, args.after_dummy)
 
+        # Wrap in alpaca template for trained models, or plain format for base
         if use_alpaca:
             prompt = format_alpaca_prompt(instruction, input_text)
         else:
@@ -235,10 +239,10 @@ def main():
 
         prompts.append(prompt)
 
-        # Parse gold IDs from output
+        # Parse gold document IDs from the expected output
         gold_output = ex["output"]
         if task == "multi-hotpotqa":
-            # Parse per-query gold IDs
+            # Multi-query gold format: "Q1: [3], [7]; Q2: [1], [5]; ..."
             num_queries = len(re.findall(r"Q\d+:", gold_output))
             per_query_gold = []
             for part in gold_output.split(";"):
@@ -246,6 +250,7 @@ def main():
                 per_query_gold.append(parse_doc_ids(part))
             gold_data.append({"per_query_gold": per_query_gold, "num_queries": num_queries})
         else:
+            # Single/multi-doc gold format: "[3]" or "[3], [7]"
             gold_data.append({"gold_ids": parse_doc_ids(gold_output)})
 
     # Load model and run inference
@@ -260,10 +265,12 @@ def main():
     print(f"Running inference on {len(prompts)} examples...")
     responses = run_inference(llm, prompts, sampling_params, lora_request)
 
-    # Evaluate
+    # --- Evaluate predictions against gold labels ---
     if task == "multi-hotpotqa":
-        all_per_query = []
-        all_agg = []
+        # Multi-query eval: compute metrics per-query within each example,
+        # then average across queries (per-example) and across examples (overall)
+        all_per_query = []  # per_query_metrics for each example
+        all_agg = []        # per-example aggregated metrics
         details = []
 
         for ex, resp, gold in zip(raw, responses, gold_data):
@@ -271,22 +278,24 @@ def main():
             predicted_per_query = parse_multi_query_output(resp, num_q)
             per_query_gold = gold["per_query_gold"]
 
-            # Pad gold if needed
             while len(per_query_gold) < num_q:
                 per_query_gold.append(set())
 
+            # Score each query independently
             per_query_metrics = []
             for pred_ids, gold_ids in zip(predicted_per_query, per_query_gold):
                 m = compute_retrieval_metrics(pred_ids, gold_ids)
                 per_query_metrics.append(m)
 
             all_per_query.append(per_query_metrics)
+            # Average metrics across queries within this example
             n = len(per_query_metrics)
             agg = {
                 "exact_match": sum(m["exact_match"] for m in per_query_metrics) / n,
                 "recall": sum(m["recall"] for m in per_query_metrics) / n,
                 "precision": sum(m["precision"] for m in per_query_metrics) / n,
                 "f1": sum(m["f1"] for m in per_query_metrics) / n,
+                # all_correct: 1.0 only if ALL queries in this example have perfect EM
                 "all_correct": float(all(m["exact_match"] == 1.0 for m in per_query_metrics)),
             }
             all_agg.append(agg)
@@ -296,12 +305,13 @@ def main():
                 **agg,
             })
 
-        # Overall metrics
+        # Average across all examples
         n_total = len(all_agg)
         overall = {k: sum(a[k] for a in all_agg) / n_total
                    for k in ["exact_match", "recall", "precision", "f1", "all_correct"]}
 
-        # Per-position metrics
+        # Per-position metrics: how well does the model do on Q1 vs Q2 vs Q3 etc.
+        # This reveals whether later queries in the sequence are harder.
         num_q = gold_data[0]["num_queries"]
         per_position = []
         for pos in range(num_q):

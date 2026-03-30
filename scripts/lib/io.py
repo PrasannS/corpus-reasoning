@@ -1,11 +1,25 @@
-"""Shared I/O utilities and prompt templates."""
+"""Shared I/O utilities and prompt templates.
+
+This module provides the core data loading/saving functions and the alpaca prompt
+template used throughout the pipeline. Every training example and eval prompt flows
+through format_alpaca_prompt() to ensure training/eval prompt alignment.
+
+Key exports:
+  - ALPACA_TEMPLATE / format_alpaca_prompt: The prompt wrapper for all trained models.
+  - load_jsonl / save_jsonl: Read/write alpaca-format training data.
+  - insert_dummy_tokens: Inject padding tokens around documents for ablation studies.
+  - print_dataset_stats: Quick summary of generated dataset files.
+"""
 
 import json
 import re
 from pathlib import Path
 
 
-# Alpaca prompt template — used by training (Axolotl) and evaluation scripts.
+# Alpaca prompt template — the exact wrapper Axolotl applies during training.
+# Evaluation scripts must use this same template for trained models (LoRA or full FT)
+# to match the prompt distribution the model was trained on. Base model evaluation
+# uses HELMET templates instead (see lib/prompts.py).
 ALPACA_TEMPLATE = (
     "Below is an instruction that describes a task, paired with an input "
     "that provides further context. Write a response that appropriately "
@@ -42,6 +56,17 @@ def insert_dummy_tokens(input_text: str, before_dummy: int = 0, after_dummy: int
                         dummy_token: str = "* ") -> str:
     """Insert dummy tokens before and/or after the document block in the input text.
 
+    Used for ablation studies to test whether the model relies on positional
+    proximity between the query and documents. Dummy tokens push documents
+    further from the query in the sequence, testing if the model can still
+    retrieve/answer correctly with increased distance.
+
+    The input text has the structure:
+        [optional: Question: ...\\n\\n] Document 1\\n\\nDocument 2\\n\\n...\\n\\nQuestion: ...
+
+    This function finds the document block boundaries and inserts repeated
+    dummy tokens ("* * * ...") before and/or after it.
+
     Args:
         input_text: The 'input' field of an alpaca example (docs + question).
         before_dummy: Number of dummy token repetitions to insert before documents.
@@ -54,28 +79,31 @@ def insert_dummy_tokens(input_text: str, before_dummy: int = 0, after_dummy: int
     if before_dummy == 0 and after_dummy == 0:
         return input_text
 
-    # Find first document (handles all formats: "Document (Title:", "Document:", "Document [")
+    # Locate the start of the document block by finding the first "Document" token.
+    # Handles all naming conventions: "Document (Title:", "Document:", "Document ["
     doc_match = re.search(r'Document[\s\[\(:]', input_text)
     if not doc_match:
         return input_text
     doc_start_idx = doc_match.start()
 
-    # Find end of document block (trailing question)
+    # Locate the end of the document block by finding the trailing question.
+    # For single-query tasks: "\n\nQuestion: ..."
+    # For multi-query tasks: "\nQuestion 1: ..."
     doc_end_idx = len(input_text)
-    # Single-query trailing question
     trailing = input_text.rfind("\n\nQuestion:")
     if trailing > doc_start_idx:
         doc_end_idx = trailing
     else:
-        # Multi-query trailing questions
         trailing = input_text.rfind("\nQuestion 1:")
         if trailing > doc_start_idx:
             doc_end_idx = trailing
 
+    # Split into three segments: before docs, docs, after docs (question)
     before_text = input_text[:doc_start_idx]
     doc_text = input_text[doc_start_idx:doc_end_idx]
     after_text = input_text[doc_end_idx:]
 
+    # Reassemble with dummy tokens injected at the boundaries
     result = before_text
     if before_dummy > 0:
         result += dummy_token * before_dummy + "\n\n"

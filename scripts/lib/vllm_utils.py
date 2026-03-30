@@ -1,4 +1,12 @@
-"""Shared vLLM model loading and inference utilities."""
+"""Shared vLLM model loading and inference utilities.
+
+All standard-attention evaluation scripts use vLLM for fast batched inference.
+This module provides common argument parsing, model loading (with optional LoRA),
+and a simple inference wrapper.
+
+Note: Chunked attention evaluation uses HuggingFace Transformers directly
+(see evaluate_chunked.py) because vLLM doesn't support custom 4D attention masks.
+"""
 
 import argparse
 from pathlib import Path
@@ -26,23 +34,34 @@ def add_vllm_args(parser: argparse.ArgumentParser) -> None:
 
 
 def load_model(args) -> tuple[LLM, LoRARequest | None]:
-    """Load vLLM model and optional LoRA adapter from parsed args."""
+    """Load vLLM model and optional LoRA adapter from parsed args.
+
+    Returns (llm, lora_request) where lora_request is None for base-only eval.
+    """
     enable_lora = bool(args.lora_path)
     language_model_only = getattr(args, "language_model_only", False)
     print(f"Loading model: {args.base_model} (enable_lora={enable_lora}, language_model_only={language_model_only})")
+
+    # Qwen3.5 is natively multimodal — force text-only mode to avoid
+    # loading the vision encoder (saves memory and avoids compatibility issues).
     hf_overrides = {"architectures": ["Qwen3_5ForCausalLM"]} if language_model_only else None
+
     tokenizer = getattr(args, "tokenizer", None)
     llm = LLM(
         model=args.base_model,
         tokenizer=tokenizer,
         enable_lora=enable_lora,
-        max_lora_rank=64 if enable_lora else None,
+        max_lora_rank=64 if enable_lora else None,  # support up to r=64 LoRA
         tensor_parallel_size=args.tensor_parallel_size,
         max_model_len=args.max_model_len,
-        gpu_memory_utilization=0.5,
+        gpu_memory_utilization=0.5,  # conservative — leaves room for LoRA overhead
         enforce_eager=getattr(args, "enforce_eager", False),
         hf_overrides=hf_overrides,
     )
+
+    # Create a LoRA request if a LoRA adapter path was provided.
+    # vLLM loads LoRA weights on-the-fly per request, so the base model
+    # is loaded once and the adapter is applied at inference time.
     lora_request = None
     if args.lora_path:
         lora_request = LoRARequest("lora", 1, str(Path(args.lora_path).resolve()))

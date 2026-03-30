@@ -1,12 +1,16 @@
 """Evaluate with chunked document attention using HuggingFace (not vLLM).
 
 Prefills with chunked attention mask (documents isolated), then generates with
-standard causal attention. Supports HELMET RAG format and alpaca JSONL.
+standard causal attention. Supports two attention backends:
+  - sdpa (default): Materializes full N*N float mask. Works everywhere but uses
+    more memory. Good for shorter sequences.
+  - flex: Uses PyTorch FlexAttention with block-sparse masks. Faster and more
+    memory-efficient for long sequences, but requires PyTorch >= 2.5.
 
 Usage:
     python scripts/evaluate_chunked.py --datasets nq --num-docs 20
+    python scripts/evaluate_chunked.py --backend flex --datasets nq --num-docs 20
     python scripts/evaluate_chunked.py --eval-data data/nq_eval_k20.jsonl --lora-path outputs/nq-rag-chunked
-    python scripts/evaluate_chunked.py --datasets nq --lora-path outputs/nq-rag-chunked --num-docs 20
 """
 
 import argparse
@@ -23,32 +27,42 @@ from lib.io import format_alpaca_prompt, insert_dummy_tokens
 from lib.metrics import exact_match, substring_match, token_f1, max_over_answers, aggregate
 from lib.chunked_attention import (
     DOC_START, DOC_END, setup_tokenizer, wrap_documents,
-    build_chunked_causal_mask, reorder_query,
+    build_chunked_causal_mask, reorder_query, find_chunk_spans,
 )
 from evaluate_helmet_rag import DATASET_CONFIG, PASSAGE_TEMPLATE, build_demos, parse_output
 
 
 def load_model(args):
-    """Load model with SDPA attention and optional LoRA."""
+    """Load model with SDPA or FlexAttention backend and optional LoRA.
+
+    Unlike vLLM eval, this uses HuggingFace directly because vLLM doesn't
+    support custom 4D attention masks needed for chunked attention.
+    """
     tokenizer = AutoTokenizer.from_pretrained(args.base_model)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # Only add chunked attention tokens if not using standard attention
+    # Chunked attention requires special <doc_start>/<doc_end> tokens to mark
+    # document boundaries. Skip adding them for standard attention baseline.
     if args.standard_attention:
         doc_start_id, doc_end_id = None, None
     else:
         doc_start_id, doc_end_id = setup_tokenizer(tokenizer)
 
+    # Choose attention implementation based on backend
+    attn_impl = "flex_attention" if args.backend == "flex" else "sdpa"
     model = AutoModelForCausalLM.from_pretrained(
         args.base_model,
-        attn_implementation="sdpa",
+        attn_implementation=attn_impl,
         torch_dtype=torch.bfloat16,
     )
     if not args.standard_attention:
+        # Resize embeddings to include the new boundary tokens
         model.resize_token_embeddings(len(tokenizer))
 
     if args.lora_path:
+        # Merge LoRA weights into base model for faster inference
+        # (no adapter overhead during generation)
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, args.lora_path)
         model = model.merge_and_unload()
@@ -61,17 +75,26 @@ def load_model(args):
 @torch.no_grad()
 def generate_chunked(model, tokenizer, input_ids, doc_start_id, doc_end_id,
                      max_new_tokens=20, stop_token_ids=None, standard_attention=False):
-    """Generate with chunked (or standard) attention during prefill, standard causal during decode."""
+    """Generate with chunked (or standard) attention during prefill, standard causal during decode.
+
+    Two-phase generation:
+      Phase 1 (prefill): Process the entire prompt with the chunked 4D mask so
+        documents can't attend to each other. KV cache is populated here.
+      Phase 2 (decode): Generate tokens autoregressively with standard causal
+        attention (new tokens can attend to everything in the KV cache).
+    """
     device = input_ids.device
 
-    # Phase 1: Prefill with chunked or standard attention mask
+    # Phase 1: Prefill — build the custom attention mask for the full prompt
     if standard_attention:
+        # Standard causal mask (lower-triangular) as a baseline comparison
         seq_len = input_ids.size(1)
         dtype = torch.bfloat16
         mask = torch.triu(
             torch.full((seq_len, seq_len), torch.finfo(dtype).min, dtype=dtype), diagonal=1
         ).unsqueeze(0).unsqueeze(0).to(device)
     else:
+        # Chunked mask: documents isolated from each other, query/instruction "free"
         mask = build_chunked_causal_mask(
             input_ids.squeeze(0), doc_start_id, doc_end_id,
         ).to(device)
@@ -80,9 +103,71 @@ def generate_chunked(model, tokenizer, input_ids, doc_start_id, doc_end_id,
     past_kv = outputs.past_key_values
     next_token = outputs.logits[:, -1, :].argmax(dim=-1, keepdim=True)
 
-    # Phase 2: Autoregressive decode with standard causal attention
+    # Phase 2: Greedy autoregressive decode — no custom mask needed since
+    # generated tokens attend to the full KV cache via standard causal attention
     generated = [next_token]
-    for _ in range(max_new_tokens - 1): # this is a greedy decode
+    for _ in range(max_new_tokens - 1):
+        outputs = model(input_ids=next_token, past_key_values=past_kv, use_cache=True)
+        past_kv = outputs.past_key_values
+        next_token = outputs.logits[:, -1, :].argmax(dim=-1, keepdim=True)
+        generated.append(next_token)
+        if stop_token_ids and next_token.item() in stop_token_ids:
+            break
+
+    gen_ids = torch.cat(generated, dim=-1)
+    return tokenizer.decode(gen_ids[0], skip_special_tokens=True)
+
+
+def build_chunk_ids(input_ids, doc_start_id, doc_end_id):
+    """Build chunk ID tensor for FlexAttention: chunk_id[i] = chunk index if in doc, -1 if free."""
+    seq_len = input_ids.size(1) if input_ids.dim() > 1 else len(input_ids)
+    ids_1d = input_ids.squeeze(0) if input_ids.dim() > 1 else input_ids
+    spans = find_chunk_spans(ids_1d, doc_start_id, doc_end_id)
+    chunk_id = torch.full((seq_len,), -1, dtype=torch.int32, device=input_ids.device)
+    for idx, (s, e) in enumerate(spans):
+        chunk_id[s:e] = idx
+    return chunk_id.unsqueeze(0)  # (1, seq_len)
+
+
+@torch.no_grad()
+def generate_chunked_flex(model, tokenizer, input_ids, doc_start_id, doc_end_id,
+                          max_new_tokens=20, stop_token_ids=None, standard_attention=False):
+    """Generate with FlexAttention chunked prefill, then standard causal decode.
+
+    FlexAttention uses compiled block-sparse masks instead of materializing the
+    full N*N mask, making it faster and more memory-efficient for long sequences.
+    """
+    from torch.nn.attention.flex_attention import create_block_mask
+
+    device = input_ids.device
+    B, S = input_ids.shape
+
+    if standard_attention:
+        # Standard causal -- no block mask needed, model uses default causal
+        outputs = model(input_ids=input_ids, use_cache=True)
+    else:
+        # Build BlockMask: same chunked attention logic but in FlexAttention's
+        # mask_mod function format (evaluated per-block, not per-element)
+        chunk_ids = build_chunk_ids(input_ids, doc_start_id, doc_end_id)
+
+        def mask_mod(b, h, q_idx, kv_idx):
+            causal = q_idx >= kv_idx
+            q_chunk = chunk_ids[b, q_idx]
+            kv_chunk = chunk_ids[b, kv_idx]
+            same_chunk = (q_chunk == kv_chunk) & (q_chunk >= 0)
+            q_free = q_chunk == -1
+            kv_free = kv_chunk == -1
+            return causal & (same_chunk | q_free | kv_free)
+
+        block_mask = create_block_mask(mask_mod, B=B, H=None, Q_LEN=S, KV_LEN=S, device=device)
+        outputs = model(input_ids=input_ids, attention_mask=block_mask, use_cache=True)
+
+    past_kv = outputs.past_key_values
+    next_token = outputs.logits[:, -1, :].argmax(dim=-1, keepdim=True)
+
+    # Greedy autoregressive decode (standard causal, same as SDPA path)
+    generated = [next_token]
+    for _ in range(max_new_tokens - 1):
         outputs = model(input_ids=next_token, past_key_values=past_kv, use_cache=True)
         past_kv = outputs.past_key_values
         next_token = outputs.logits[:, -1, :].argmax(dim=-1, keepdim=True)
@@ -193,6 +278,9 @@ def main():
     parser.add_argument("--query-position", type=str, default="after",
                         choices=["before", "after", "both"],
                         help="Place question before or after documents")
+    parser.add_argument("--backend", type=str, default="sdpa", choices=["sdpa", "flex"],
+                        help="Attention backend: 'sdpa' materializes N*N mask, "
+                             "'flex' uses block-sparse FlexAttention (faster, less memory)")
     parser.add_argument("--standard-attention", action="store_true",
                         help="Use standard causal attention instead of chunked")
     parser.add_argument("--no-titles", action="store_true",
@@ -243,7 +331,7 @@ def main():
 
     for source_type, source in eval_sources:
         label = source if source_type == "helmet" else Path(source).stem
-        attn_label = "standard" if args.standard_attention else "chunked"
+        attn_label = "standard" if args.standard_attention else f"chunked+{args.backend}"
         print(f"\n{'='*60}\nEvaluating: {label} ({attn_label} attention, query {args.query_position})\n{'='*60}")
 
         if source_type == "helmet":
@@ -268,7 +356,9 @@ def main():
                 prompt, return_tensors="pt", truncation=True,
             ).input_ids.to(device)
 
-            response = generate_chunked(
+            # Dispatch to SDPA or FlexAttention backend
+            gen_fn = generate_chunked_flex if args.backend == "flex" else generate_chunked
+            response = gen_fn(
                 model, tokenizer, input_ids, doc_start_id, doc_end_id,
                 max_new_tokens=args.max_tokens, stop_token_ids=stop_ids,
                 standard_attention=args.standard_attention,

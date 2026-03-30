@@ -20,22 +20,10 @@ import argparse
 import random
 from datasets import load_dataset
 from lib.io import save_jsonl, print_dataset_stats
-
-PASSAGE_TEMPLATE = "Document (Title: {title}): {text}"
-PASSAGE_TEMPLATE_NO_TITLE = "Document: {text}"
-PASSAGE_TEMPLATE_ID = "Document [{id}] (Title: {title}): {text}"
-PASSAGE_TEMPLATE_NO_TITLE_ID = "Document [{id}]: {text}"
-INSTRUCTION = (
-    "Use the given documents to answer each of the following questions. "
-    "Write a concise and short answer for each question, in order, as a comma-separated list.\n"
-    "Write your answer in the following format:\nAnswers: [answer1], [answer2], ..."
-)
-RETRIEVAL_INSTRUCTION = (
-    "Use the given documents to identify which documents are relevant to "
-    "answering each of the following questions. For each question, list the "
-    "relevant document IDs.\n"
-    "Write your answer in the following format:\n"
-    "Relevant Documents: Q1: [id1], [id2]; Q2: [id3], [id4]; ..."
+from lib.prompts import (
+    MULTI_QA_INSTRUCTION as INSTRUCTION,
+    RETRIEVAL_INSTRUCTION_MULTI_QUERY as RETRIEVAL_INSTRUCTION,
+    format_doc_dict as format_doc,
 )
 
 
@@ -55,16 +43,6 @@ def get_supporting_titles(example):
     return set(example["supporting_facts"]["title"])
 
 
-def format_doc(doc, use_titles=True, doc_id=None):
-    if doc_id is not None:
-        if use_titles:
-            return PASSAGE_TEMPLATE_ID.format(id=doc_id, title=doc["title"], text=doc["text"])
-        return PASSAGE_TEMPLATE_NO_TITLE_ID.format(id=doc_id, text=doc["text"])
-    if use_titles:
-        return PASSAGE_TEMPLATE.format(title=doc["title"], text=doc["text"])
-    return PASSAGE_TEMPLATE_NO_TITLE.format(text=doc["text"])
-
-
 def build_multi_example(examples_group, distractor_pool, total_docs, rng,
                         use_titles=True, retrieval=False):
     """Build one multi-query training example from N HotpotQA questions.
@@ -80,13 +58,15 @@ def build_multi_example(examples_group, distractor_pool, total_docs, rng,
     Returns:
         dict with instruction, input, output fields, or None if dedup fails.
     """
+    # --- Step 1: Collect supporting docs and distractors from all N queries ---
+    # We deduplicate by title across queries: if two queries share a supporting
+    # doc (rare but possible), it appears only once in the context.
     all_supporting = []
     all_local_distractors = []
     questions = []
     answers = []
     seen_titles = set()
-    # Track per-query supporting titles for retrieval mode
-    per_query_supporting_titles = []
+    per_query_supporting_titles = []  # needed in retrieval mode to map docs to queries
 
     for ex in examples_group:
         all_docs = paragraphs_from_context(ex["context"])
@@ -99,7 +79,7 @@ def build_multi_example(examples_group, distractor_pool, total_docs, rng,
                 all_supporting.append(d)
                 seen_titles.add(d["title"])
 
-        # Collect local distractors
+        # Collect local distractors (non-supporting docs from this example)
         for d in all_docs:
             if d["title"] not in supporting_titles and d["title"] not in seen_titles:
                 all_local_distractors.append(d)
@@ -110,13 +90,14 @@ def build_multi_example(examples_group, distractor_pool, total_docs, rng,
 
     num_supporting = len(all_supporting)
 
-    # Determine how many distractors we need
+    # --- Step 2: Pad with distractors to reach total_docs ---
+    # total_docs=0 means "supporting only" (no distractors added)
     if total_docs > 0:
         num_distractors_needed = max(0, total_docs - num_supporting)
     else:
         num_distractors_needed = 0
 
-    # Build distractor list: prefer local distractors, then pool
+    # Priority: local distractors first (from the N examples), then external pool
     distractors = list(all_local_distractors)
     rng.shuffle(distractors)
     if len(distractors) < num_distractors_needed:
@@ -124,20 +105,20 @@ def build_multi_example(examples_group, distractor_pool, total_docs, rng,
         extra = rng.sample(pool_available,
                            min(num_distractors_needed - len(distractors), len(pool_available)))
         distractors.extend(extra)
-    # If still not enough, allow duplicates from pool
     while len(distractors) < num_distractors_needed:
         distractors.append(rng.choice(distractor_pool))
     distractors = distractors[:num_distractors_needed]
 
-    # Shuffle all documents together
+    # --- Step 3: Shuffle all documents and format ---
+    # All docs (supporting from all queries + distractors) are randomly interleaved
     all_paragraphs = all_supporting + distractors
     rng.shuffle(all_paragraphs)
 
-    # Format documents (with IDs in retrieval mode)
     if retrieval:
+        # Retrieval mode: each doc gets [N] ID, output maps each query to its gold doc IDs
+        # Format: "Q1: [3], [7]; Q2: [1], [5]; ..."
         formatted_docs = [format_doc(d, use_titles, doc_id=i + 1)
                           for i, d in enumerate(all_paragraphs)]
-        # Build per-query doc ID output
         query_parts = []
         for qi, sup_titles in enumerate(per_query_supporting_titles):
             gold_ids = sorted(
@@ -148,12 +129,13 @@ def build_multi_example(examples_group, distractor_pool, total_docs, rng,
             query_parts.append(f"Q{qi + 1}: {ids_str}")
         output = "; ".join(query_parts)
     else:
+        # QA mode: output is comma-separated answers in query order
         formatted_docs = [format_doc(d, use_titles) for d in all_paragraphs]
         output = ", ".join(answers)
 
     context = "\n\n".join(formatted_docs)
 
-    # Build questions block
+    # Build the questions block that goes after all documents
     questions_block = "\n".join(
         f"Question {i+1}: {q}" for i, q in enumerate(questions)
     )

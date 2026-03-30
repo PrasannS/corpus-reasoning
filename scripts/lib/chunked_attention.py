@@ -1,7 +1,23 @@
-"""Chunked document attention: documents attend within themselves and to
-query tokens; query/answer tokens attend to everything.
+"""Chunked document attention with block-diagonal masking.
 
-Special tokens <|doc_start|> and <|doc_end|> mark document boundaries.
+Standard causal attention lets every token attend to all preceding tokens,
+meaning each document can "see" other documents in the context. Chunked
+attention restricts this: document tokens can only attend within their own
+document AND to "free" tokens (query, instruction, padding) that precede them.
+
+This isolates documents from each other while still allowing each document
+to attend to the query/instruction. The hypothesis is that this prevents
+shortcut learning where the model relies on cross-document attention patterns.
+
+Implementation:
+  - Special tokens <|doc_start|> and <|doc_end|> mark document boundaries.
+  - wrap_documents() inserts these tokens around each "Document ..." block.
+  - build_chunked_causal_mask() constructs a 4D attention mask where:
+      * "Free" tokens (outside any doc) attend causally to all preceding tokens
+      * Document tokens attend to: same-doc tokens + free tokens (causal)
+      * Document tokens do NOT attend to tokens in other documents
+
+The mask logic: causal AND (same_chunk OR row_free OR col_free)
 """
 
 import re
@@ -24,37 +40,46 @@ def wrap_documents(text: str) -> str:
     HELMET format. Supports query appearing before or after documents.
     Non-document text (question, instruction) is left unwrapped.
     """
-    # Find question — may be before, after, or both
+    # Step 1: Separate the question(s) from the document section.
+    # The question can appear before docs (query-before), after docs (query-after),
+    # or both (query-both). We extract it so we don't accidentally wrap it.
     question_before_match = re.match(r'^(Question:.*?\n\n)', text)
     question_after_idx = text.rfind("\n\nQuestion:")
 
     query_before, query_after = "", ""
     if question_before_match:
+        # Question appears at the start — extract it
         query_before = question_before_match.group(1)
         doc_section = text[len(query_before):]
-        # Also check for question at end (both case)
+        # Also check for a trailing question (query-both case)
         q_after_idx = doc_section.rfind("\n\nQuestion:")
         if q_after_idx != -1:
             query_after = doc_section[q_after_idx:]
             doc_section = doc_section[:q_after_idx]
     elif question_after_idx != -1:
+        # Question appears only at the end
         doc_section = text[:question_after_idx]
         query_after = text[question_after_idx:]
     else:
+        # No question found (shouldn't happen in normal usage)
         doc_section = text
 
-    # Split at all \n\n boundaries and wrap document blocks.
-    # Non-document text (e.g. dummy tokens) stays unwrapped so chunked
-    # attention treats it like query/instruction tokens.
+    # Step 2: Split the document section on paragraph boundaries (\n\n) and
+    # wrap each document block with boundary tokens. Non-document text (e.g.
+    # dummy tokens from ablation studies) is left unwrapped — the attention
+    # mask will treat unwrapped tokens as "free" (visible to all).
     parts = doc_section.split("\n\n")
     wrapped = []
     for p in parts:
         p = p.strip()
         if p.startswith(("Document (", "Document [", "Document:")):
+            # This is a document — wrap it so the mask can isolate it
             wrapped.append(f"{DOC_START}{p}{DOC_END}")
         elif p:
+            # Non-document text (dummy tokens, etc.) — leave as free tokens
             wrapped.append(p)
 
+    # Step 3: Reassemble with the question(s) in their original positions
     return query_before + "\n\n".join(wrapped) + query_after
 
 
@@ -100,7 +125,12 @@ def reorder_query(text: str, position: str = "after") -> str:
 
 
 def find_chunk_spans(input_ids, doc_start_id, doc_end_id):
-    """Find (start, end_exclusive) index spans for each document chunk."""
+    """Find (start, end_exclusive) index spans for each document chunk.
+
+    Scans token IDs for matching <|doc_start|>...<|doc_end|> pairs.
+    The boundary tokens themselves are included in the span, so the mask
+    treats them as part of the document (they only attend within their chunk).
+    """
     spans = []
     start = None
     ids = input_ids.tolist() if isinstance(input_ids, torch.Tensor) else input_ids
@@ -108,7 +138,7 @@ def find_chunk_spans(input_ids, doc_start_id, doc_end_id):
         if tid == doc_start_id:
             start = i
         elif tid == doc_end_id and start is not None:
-            spans.append((start, i + 1))
+            spans.append((start, i + 1))  # +1 to include the end token
             start = None
     return spans
 
@@ -135,25 +165,33 @@ def build_chunked_causal_mask(input_ids, doc_start_id, doc_end_id, dtype=torch.b
     spans = find_chunk_spans(input_ids, doc_start_id, doc_end_id)
 
     if not spans:
-        # No documents found — return standard causal mask
+        # No documents found — fall back to standard causal mask.
+        # This happens when standard_attention=True or the input has no docs.
         mask = torch.triu(torch.full((seq_len, seq_len), torch.finfo(dtype).min, dtype=dtype), diagonal=1)
         return mask.unsqueeze(0).unsqueeze(0)
 
-    # Assign chunk IDs (-1 = not in any chunk)
+    # Step 1: Assign each token a chunk ID. Tokens outside any document get -1
+    # ("free" tokens: instruction, question, padding, dummy tokens).
     chunk_id = torch.full((seq_len,), -1, dtype=torch.long)
     for idx, (s, e) in enumerate(spans):
         chunk_id[s:e] = idx
 
-    # Vectorized mask: causal AND (same_chunk OR row_not_in_chunk OR col_not_in_chunk)
-    # - same_chunk: tokens in the same document chunk can attend to each other
-    # - row_not_in_chunk: query/answer tokens attend to all preceding tokens
-    # - col_not_in_chunk: doc tokens can attend to query tokens (key change)
+    # Step 2: Build the attention mask as a boolean matrix.
+    # The mask is: causal AND (same_chunk OR row_free OR col_free)
+    #
+    # Intuition for each condition (all subject to causal — can't look ahead):
+    #   same_chunk:  tokens in document 3 can attend to other tokens in document 3
+    #   row_free:    free tokens (question, instruction) can attend to everything
+    #   col_free:    all tokens can attend to free tokens (so docs can see the query)
     causal = torch.tril(torch.ones(seq_len, seq_len, dtype=torch.bool))
     same_chunk = (chunk_id.unsqueeze(0) == chunk_id.unsqueeze(1)) & (chunk_id.unsqueeze(0) >= 0)
-    row_not_in_chunk = (chunk_id < 0).unsqueeze(1).expand(-1, seq_len)
-    col_not_in_chunk = (chunk_id < 0).unsqueeze(0).expand(seq_len, -1)
-    bool_mask = causal & (same_chunk | row_not_in_chunk | col_not_in_chunk)
+    row_free = (chunk_id < 0).unsqueeze(1).expand(-1, seq_len)
+    col_free = (chunk_id < 0).unsqueeze(0).expand(seq_len, -1)
+    bool_mask = causal & (same_chunk | row_free | col_free)
 
+    # Step 3: Convert bool mask to float mask for SDPA.
+    # SDPA expects 0.0 = attend, -inf = masked (added to attention logits).
     min_val = torch.finfo(dtype).min
     float_mask = torch.where(bool_mask, torch.zeros(1, dtype=dtype), torch.full((1,), min_val, dtype=dtype))
+    # Shape: (1, 1, seq_len, seq_len) — batch=1, heads=1 (broadcast across heads)
     return float_mask.unsqueeze(0).unsqueeze(0)

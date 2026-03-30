@@ -23,20 +23,10 @@ import argparse
 import random
 from datasets import load_dataset
 from lib.io import save_jsonl, print_dataset_stats
-
-# Match HELMET eval format exactly (evaluate_helmet_rag.py lines 21-28)
-PASSAGE_TEMPLATE = "Document (Title: {title}): {text}"
-PASSAGE_TEMPLATE_NO_TITLE = "Document: {text}"
-PASSAGE_TEMPLATE_ID = "Document [{id}] (Title: {title}): {text}"
-PASSAGE_TEMPLATE_NO_TITLE_ID = "Document [{id}]: {text}"
-INSTRUCTION = (
-    "Use the given documents to write a concise and short answer to the question. "
-    "Write your answer in the following format:\nAnswer: [answer]"
-)
-RETRIEVAL_INSTRUCTION = (
-    "Use the given documents to identify which documents are relevant to "
-    "answering the question. List all relevant document IDs.\n"
-    "Write your answer in the following format:\nRelevant Documents: [id1], [id2]"
+from lib.prompts import (
+    QA_INSTRUCTION as INSTRUCTION,
+    RETRIEVAL_INSTRUCTION_MULTI_DOC as RETRIEVAL_INSTRUCTION,
+    format_doc_dict as format_doc,
 )
 
 
@@ -54,17 +44,6 @@ def paragraphs_from_context(context):
 def get_supporting_titles(example):
     """Return set of supporting document titles."""
     return set(example["supporting_facts"]["title"])
-
-
-def format_doc(doc, use_titles=True, doc_id=None):
-    """Format a document dict as a passage string, optionally with numeric ID."""
-    if doc_id is not None:
-        if use_titles:
-            return PASSAGE_TEMPLATE_ID.format(id=doc_id, title=doc["title"], text=doc["text"])
-        return PASSAGE_TEMPLATE_NO_TITLE_ID.format(id=doc_id, text=doc["text"])
-    if use_titles:
-        return PASSAGE_TEMPLATE.format(title=doc["title"], text=doc["text"])
-    return PASSAGE_TEMPLATE_NO_TITLE.format(text=doc["text"])
 
 
 def build_example(example, distractor_pool, num_docs, doc_order, gold_position,
@@ -92,8 +71,9 @@ def build_example(example, distractor_pool, num_docs, doc_order, gold_position,
     all_docs = paragraphs_from_context(example["context"])
     supporting_titles = get_supporting_titles(example)
 
-    # Split into supporting and in-example distractors
-    # Preserve supporting_facts order for reasoning mode
+    # --- Step 1: Separate supporting docs from in-example distractors ---
+    # HotpotQA has 2 supporting docs per question; preserve their order from
+    # supporting_facts for "reasoning" mode (the order reflects the reasoning chain)
     sf_titles_ordered = list(dict.fromkeys(example["supporting_facts"]["title"]))
     supporting = []
     for t in sf_titles_ordered:
@@ -103,9 +83,10 @@ def build_example(example, distractor_pool, num_docs, doc_order, gold_position,
                 break
     local_distractors = [d for d in all_docs if d["title"] not in supporting_titles]
 
+    # --- Step 2: Gather enough distractors to reach num_docs total ---
+    # Priority: use distractors from the same HotpotQA example first (they're
+    # topically related), then fill from the external pool (other examples' docs)
     num_distractors_needed = max(0, num_docs - len(supporting))
-
-    # Build distractor list: prefer in-example distractors, then external pool
     distractors = list(local_distractors)
     rng.shuffle(distractors)
     if len(distractors) < num_distractors_needed:
@@ -117,11 +98,14 @@ def build_example(example, distractor_pool, num_docs, doc_order, gold_position,
         distractors.append(rng.choice(distractor_pool))
     distractors = distractors[:num_distractors_needed]
 
+    # --- Step 3: Arrange document order ---
     if doc_order == "shuffled":
+        # All docs (supporting + distractors) in random order — model must find them
         all_paragraphs = supporting + distractors
         rng.shuffle(all_paragraphs)
     else:
-        # reasoning: supporting docs in supporting_facts order, inserted as block
+        # "reasoning" mode: supporting docs kept as a contiguous block in
+        # supporting_facts order, inserted at the specified position
         pos_map = {
             "first": 0,
             "last": len(distractors),
@@ -130,11 +114,13 @@ def build_example(example, distractor_pool, num_docs, doc_order, gold_position,
         pos = pos_map.get(gold_position, rng.randint(0, len(distractors)))
         all_paragraphs = distractors[:pos] + supporting + distractors[pos:]
 
-    # Format documents (with IDs in retrieval mode)
+    # --- Step 4: Format documents and build output ---
+    # Retrieval mode: each doc gets a [N] ID prefix, output lists the gold doc IDs
+    # QA mode: plain documents, output is the answer text
     if retrieval:
         formatted_docs = [format_doc(d, use_titles, doc_id=i + 1)
                           for i, d in enumerate(all_paragraphs)]
-        # Find supporting doc positions (1-indexed)
+        # Find where supporting docs ended up after shuffling/placement (1-indexed)
         gold_ids = sorted(
             i + 1 for i, d in enumerate(all_paragraphs)
             if d["title"] in supporting_titles
@@ -226,7 +212,9 @@ def main():
         n = min(num_wanted, len(ds))
         selected = indices[:n]
 
-        # Build external distractor pool from non-selected examples
+        # Build external distractor pool from non-selected examples.
+        # Only non-supporting docs are used as distractors to avoid leaking
+        # answers from other questions' supporting documents.
         distractor_pool = []
         if args.num_docs > 0:
             pool_indices = indices[n:n + n * 3] if n < len(ds) else indices

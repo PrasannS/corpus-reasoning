@@ -1,4 +1,15 @@
-"""Shared metric computation for evaluation scripts."""
+"""Shared metric computation for evaluation scripts.
+
+Two families of metrics:
+  1. QA metrics (exact_match, substring_match, token_f1): Compare predicted answer
+     text against gold answers. Uses HELMET-compatible normalization (lowercase,
+     remove articles/punctuation). All QA metrics support max_over_answers() for
+     datasets with multiple valid gold answers.
+
+  2. Retrieval metrics (retrieval_exact_match, retrieval_recall, retrieval_precision,
+     retrieval_f1): Compare predicted document ID sets against gold sets. Used by
+     the retrieval task where the model outputs document IDs like "[3], [7]".
+"""
 
 import re
 import string
@@ -22,8 +33,15 @@ def substring_match(pred: str, gold: str) -> bool:
 
 
 def token_f1(pred: str, gold: str) -> float:
+    """Token-level F1 score between predicted and gold answers.
+
+    Tokenizes both strings (after normalization), computes precision/recall
+    based on token overlap using Counter intersection, and returns the
+    harmonic mean. This is the standard SQuAD-style F1 metric.
+    """
     pred_tokens = normalize_answer(pred).split()
     gold_tokens = normalize_answer(gold).split()
+    # Counter intersection gives the minimum count of each shared token
     common = Counter(pred_tokens) & Counter(gold_tokens)
     num_same = sum(common.values())
     if num_same == 0:
@@ -34,9 +52,16 @@ def token_f1(pred: str, gold: str) -> float:
 
 
 def max_over_answers(metric_fn, prediction: str, answers: list[str]):
-    """Compute max metric score over all ground truth answers."""
+    """Compute max metric score over all ground truth answers.
+
+    Many datasets have multiple valid gold answers (e.g. KILT provides several
+    aliases for each entity). This function evaluates the metric against each
+    gold answer and returns the best score, following the convention used by
+    SQuAD, HELMET, and KILT evaluations.
+    """
     if isinstance(answers, str):
         answers = [answers]
+    # Handle nested lists (some datasets wrap answers in an extra list layer)
     elif answers and isinstance(answers[0], list):
         answers = [a for sublist in answers for a in sublist]
     return max(metric_fn(prediction, gt) for gt in answers)

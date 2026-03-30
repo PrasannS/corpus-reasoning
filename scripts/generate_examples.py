@@ -15,44 +15,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from lib.io import ALPACA_TEMPLATE, load_jsonl, format_alpaca_prompt, insert_dummy_tokens
+from lib.prompts import (
+    PASSAGE_TEMPLATE,
+    QA_INSTRUCTION, MULTI_QA_INSTRUCTION,
+    RETRIEVAL_INSTRUCTION_SINGLE, RETRIEVAL_INSTRUCTION_MULTI_DOC,
+    RETRIEVAL_INSTRUCTION_MULTI_QUERY,
+)
 
 EXAMPLES_DIR = Path("examples")
 EXAMPLES_DIR.mkdir(exist_ok=True)
 
 NUM_EXAMPLES = 3
-
-# ── QA task instructions (from generate_*_data.py) ──
-QA_INSTRUCTION = (
-    "Use the given documents to write a concise and short answer to the question. "
-    "Write your answer in the following format:\nAnswer: [answer]"
-)
-MULTI_QA_INSTRUCTION = (
-    "Use the given documents to answer each of the following questions. "
-    "Write a concise and short answer for each question, in order, as a comma-separated list.\n"
-    "Write your answer in the following format:\nAnswers: [answer1], [answer2], ..."
-)
-
-# ── Retrieval task instructions (from generate_*_data.py --retrieval) ──
-RETRIEVAL_INSTRUCTION_SINGLE = (
-    "Use the given documents to identify which document is most relevant to "
-    "answering the question.\n"
-    "Write your answer in the following format:\nRelevant Document: [id]"
-)
-RETRIEVAL_INSTRUCTION_MULTI_DOC = (
-    "Use the given documents to identify which documents are relevant to "
-    "answering the question. List all relevant document IDs.\n"
-    "Write your answer in the following format:\nRelevant Documents: [id1], [id2]"
-)
-RETRIEVAL_INSTRUCTION_MULTI_QUERY = (
-    "Use the given documents to identify which documents are relevant to "
-    "answering each of the following questions. For each question, list the "
-    "relevant document IDs.\n"
-    "Write your answer in the following format:\n"
-    "Relevant Documents: Q1: [id1], [id2]; Q2: [id3], [id4]; ..."
-)
-
-# ── HELMET passage template (from evaluate_helmet_rag.py) ──
-PASSAGE_TEMPLATE = "Document (Title: {title}): {text}"
 
 
 def count_docs(input_text):

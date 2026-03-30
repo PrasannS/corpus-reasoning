@@ -1,12 +1,17 @@
-"""Fast training with chunked document attention — optimized SDPA.
+"""Training with chunked document attention using SDPA.
 
-Optimizations over train_chunked.py:
-1. GPU-native mask construction (bool intermediates, 8x less memory)
-2. tf32 matmuls on A100 (~2x throughput)
-3. DeepSpeed ZeRO-1 support
-4. Dataloader workers + pinned memory
-5. Optimized collator with smaller masks
-6. torch.compile support (optional)
+Chunked attention isolates documents from each other during training: each
+document can only attend to itself and to "free" tokens (instruction, query,
+answer), not to other documents. This is implemented via a custom 4D attention
+mask passed to PyTorch's SDPA (Scaled Dot-Product Attention).
+
+Key features:
+  - Memory-efficient mask construction using bool intermediates (8x less than float)
+  - tf32 matmuls on A100 (~2x throughput)
+  - DeepSpeed ZeRO-1/ZeRO-2 support
+  - LoRA or full fine-tuning
+  - Optional standard attention mode (standard_attention in config) for comparison
+  - torch.compile support (--compile flag)
 
 Usage:
     accelerate launch --num_processes 4 scripts/train_chunked_fast.py configs/nq_rag_chunked_qboth.yml
@@ -60,6 +65,12 @@ class ChunkedDataset(Dataset):
         return len(self.examples)
 
     def _find_response_start(self, input_ids):
+        """Find where the response starts in the tokenized sequence.
+
+        Scans for the "### Response:\\n" marker in token IDs. Everything before
+        this marker is the prompt (instruction + input), and we mask it to -100
+        in labels so the loss is only computed on the model's output tokens.
+        """
         ids = input_ids.tolist()
         marker = self.response_marker
         for i in range(len(ids) - len(marker) + 1):
@@ -69,8 +80,11 @@ class ChunkedDataset(Dataset):
 
     def __getitem__(self, idx):
         ex = self.examples[idx]
+        # Reorder query position (before/after/both documents) if configured
         input_text = reorder_query(ex["input"], self.query_position)
+        # Insert <doc_start>/<doc_end> boundary tokens around each document
         wrapped_input = wrap_documents(input_text)
+        # Wrap in alpaca template (instruction + input + response prompt)
         prompt = ALPACA_TEMPLATE.format(instruction=ex["instruction"], input=wrapped_input)
         full_text = prompt + ex["output"] + self.tokenizer.eos_token
 
@@ -80,6 +94,7 @@ class ChunkedDataset(Dataset):
         )
         input_ids = encoding.input_ids.squeeze(0)
 
+        # Mask prompt tokens in labels (-100) so loss is only on the output
         labels = input_ids.clone()
         if not self.train_on_inputs:
             response_start = self._find_response_start(input_ids)
@@ -262,6 +277,14 @@ def main():
     )
     model.resize_token_embeddings(len(tokenizer))
 
+    # Initialize the new <doc_start>/<doc_end> embeddings as the mean of all
+    # existing embeddings. This gives a reasonable starting point so the model
+    # doesn't start with random noise for these tokens.
+    with torch.no_grad():
+        mean_emb = model.get_input_embeddings().weight[:-2].mean(dim=0)
+        model.get_input_embeddings().weight[-2] = mean_emb
+        model.get_input_embeddings().weight[-1] = mean_emb
+
     if cfg.get("gradient_checkpointing", True):
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
 
@@ -269,7 +292,9 @@ def main():
         print("Compiling model with torch.compile...")
         model = torch.compile(model)
 
-    # Apply LoRA if configured, otherwise full fine-tuning
+    # Apply LoRA if configured, otherwise full fine-tuning.
+    # LoRA adds low-rank adapter layers (much fewer trainable params).
+    # Full FT trains all parameters but may need ZeRO-2 for memory.
     if cfg.get("adapter") == "lora":
         lora_config = LoraConfig(
             r=cfg.get("lora_r", 16),
@@ -281,7 +306,8 @@ def main():
         model = get_peft_model(model, lora_config)
         model.print_trainable_parameters()
     else:
-        # Optionally freeze embedding and lm_head layers
+        # Full fine-tuning: optionally freeze embedding/lm_head layers
+        # to reduce memory and avoid catastrophic forgetting of token embeddings
         if cfg.get("freeze_embed", False):
             for name, param in model.named_parameters():
                 if "embed_tokens" in name or "lm_head" in name:
@@ -309,16 +335,17 @@ def main():
         standard_attention=standard_attention,
     )
 
-    # Compute steps
+    # Compute training steps: effective_batch = micro_batch × grad_accum × GPUs
     world_size = max(torch.cuda.device_count(), 1)
     batch_size = cfg.get("micro_batch_size", 1)
     grad_acc = cfg.get("gradient_accumulation_steps", 8)
     total_steps = len(dataset) // (batch_size * grad_acc * world_size)
+    # saves_per_epoch=0 means no intermediate checkpoints (save only at end)
     saves = cfg.get("saves_per_epoch", 1)
     save_steps = max(total_steps // saves, 1) if saves > 0 else total_steps
 
     # Build run name
-    output_dir = cfg.get("output_dir", "./outputs/chunked-fast-lora")
+    output_dir = cfg.get("output_dir", "./outputs/chunked-lora")
     data_stem = Path(data_path).stem
     lr = float(cfg.get("learning_rate", 5e-4))
     epochs = cfg.get("num_epochs", 1)

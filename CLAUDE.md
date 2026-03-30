@@ -17,7 +17,15 @@ Long-context training and evaluation pipeline for language models. Fine-tunes mo
 
 - `configs/` — Axolotl YAML configs and DeepSpeed JSON configs
 - `scripts/` — Data generation, training, evaluation
-  - `scripts/lib/` — Shared utilities (I/O, vLLM, metrics, shell helpers)
+  - `scripts/lib/` — Shared utilities:
+    - `io.py` — JSONL I/O, alpaca prompt formatting, dummy token insertion
+    - `prompts.py` — Centralized prompt templates and instructions (shared across all scripts)
+    - `vllm_utils.py` — vLLM model loading and batched generation
+    - `metrics.py` — QA metrics (EM, F1) and retrieval metrics (recall, precision)
+    - `chunked_attention.py` — Document boundary wrapping and 4D attention mask construction
+    - `common.sh` — Shell helpers for training launch
+  - `scripts/generate_configs.py` — Config generator (avoids maintaining 100+ YAML files)
+  - `scripts/run_experiment.sh` — Parameterized experiment runner (train + eval pipeline)
 - `data/` — Generated datasets (gitignored)
 - `outputs/` — Checkpoints and eval results (gitignored)
 - `results/` — Experiment results and reproduction instructions (checked in)
@@ -31,8 +39,8 @@ Long-context training and evaluation pipeline for language models. Fine-tunes mo
 python scripts/generate_nq_training_data.py --num-examples 1000 --num-docs 20
 python scripts/generate_hotpotqa_data.py --num-examples 5000 --num-docs 20 --question-type bridge
 python scripts/generate_multi_hotpotqa_data.py --num-examples 1000 --num-queries 10
-python scripts/convert_to_qboth.py data/input.jsonl data/output_qboth.jsonl
-python scripts/convert_to_qbefore.py data/input.jsonl data/output_qbefore.jsonl
+python scripts/convert_query_position.py --mode both data/input.jsonl data/output_qboth.jsonl
+python scripts/convert_query_position.py --mode before data/input.jsonl data/output_qbefore.jsonl
 python scripts/convert_to_dummy.py data/input.jsonl data/output_bd10.jsonl --before-dummy 10
 python scripts/convert_to_dummy.py data/input.jsonl data/output_ad10.jsonl --after-dummy 10
 python scripts/convert_to_dummy.py data/input.jsonl data/output_bd10.jsonl --before-dummy 10 --tokenizer Qwen/Qwen3.5-0.8B-Base
@@ -41,7 +49,7 @@ python scripts/convert_to_dummy.py data/input.jsonl data/output_bd10.jsonl --bef
 bash scripts/train.sh configs/nq_rag_lora_multigpu.yml
 
 # Train - chunked attention (use corpus-reasoning env)
-accelerate launch --num_processes 4 scripts/train_chunked_fast.py configs/nq_rag_chunked_qboth_fast.yml
+accelerate launch --num_processes 4 scripts/train_chunked_fast.py configs/nq_rag_chunked_qboth.yml
 
 # Evaluate - standard attention (use corpus-reasoning-eval env)
 python scripts/evaluate_helmet_rag.py --datasets nq --num-docs 20
@@ -53,6 +61,7 @@ python scripts/evaluate_retrieval.py --eval-data data/hotpotqa_eval_k20_shuffled
 
 # Evaluate - chunked attention (use corpus-reasoning-eval env)
 python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --query-position both --lora-path ./outputs/model
+python scripts/evaluate_chunked.py --backend flex --datasets nq --num-docs 20 --lora-path ./outputs/model
 
 # Dense retrieval baselines (use corpus-reasoning-retrieval env)
 python scripts/generate_retrieval_triplets.py --dataset hotpotqa --num-examples 5000
@@ -81,7 +90,7 @@ tail -f outputs/batch_JOBID.log
 - Use absolute paths in sbatch scripts (SLURM copies scripts to temp dirs, so `BASH_SOURCE` won't resolve correctly). Set `PROJECT_DIR="/accounts/projects/sewonm/prasann/projects/corpus-reasoning"` explicitly.
 - Use `eval "$(conda shell.bash hook)"` before `conda activate` in sbatch scripts.
 - Request 4 GPUs per job to run 2 jobs in parallel (8 GPU total limit).
-- Standard training uses `accelerate launch -m axolotl.cli.train`; chunked uses `accelerate launch scripts/train_chunked_fast.py`.
+- Standard training uses `accelerate launch -m axolotl.cli.train`; chunked uses `accelerate launch scripts/train_chunked_fast.py` (canonical) or `scripts/train_chunked.py` (wrapper).
 - Batch scripts go in `scripts/` (e.g., `run_batch_part1.sh`, `run_hotpotqa_k50.sh`).
 
 ## Conventions
@@ -89,7 +98,7 @@ tail -f outputs/batch_JOBID.log
 - Training configs go in `configs/` as YAML (axolotl format). Task-specific params at top, common LoRA/optimizer settings below.
 - Data generation scripts go in `scripts/` and write to `data/`
 - Dataset format: JSONL with alpaca-style fields (`instruction`, `input`, `output`)
-- Shared code goes in `scripts/lib/` (io.py, vllm_utils.py, metrics.py, common.sh)
+- Shared code goes in `scripts/lib/` (io.py, prompts.py, vllm_utils.py, metrics.py, chunked_attention.py, common.sh)
 - **Experiment tracking**: All experiment results and reproduction instructions go in `results/` as markdown files (one per task). Each file should include: task description, dataset details, config parameters, exact commands to reproduce, and results tables. Update these files whenever a new experiment is run.
 - **Eval prompt must exactly match training prompt.** This means:
   - Trained models (LoRA/full FT) use alpaca prompt format + 0 few-shot demos (training data has no demos)

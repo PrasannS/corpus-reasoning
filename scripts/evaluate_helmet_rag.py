@@ -21,32 +21,10 @@ try:
 except ImportError:
     SamplingParams = None  # vLLM not available (e.g. training env)
 
-# HELMET-compatible templates
-PASSAGE_TEMPLATE = "Document (Title: {title}): {text}"
-PASSAGE_TEMPLATE_NO_TITLE = "Document: {text}"
-DEMO_TEMPLATE = "{documents}\n\nQuestion: {question}\nAnswer: {answer}"
-
-# Instruction matches training data (generate_nq_training_data.py)
-INSTRUCTION = (
-    "Use the given documents to write a concise and short answer to the question. "
-    "Write your answer in the following format:\nAnswer: [answer]"
-)
-
-# Original HELMET-style templates (for base model eval without alpaca wrapper)
-HELMET_TEMPLATE = (
-    "Use the given documents to write a concise and short answer to the question. "
-    "Write your answer in the following format:\nAnswer: [answer]\n\n"
-    "{demos}{context}\n\nQuestion: {question}"
-)
-HELMET_TEMPLATE_QUERY_BEFORE = (
-    "Use the given documents to write a concise and short answer to the question. "
-    "Write your answer in the following format:\nAnswer: [answer]\n\n"
-    "{demos}Question: {question}\n\n{context}"
-)
-HELMET_TEMPLATE_QUERY_BOTH = (
-    "Use the given documents to write a concise and short answer to the question. "
-    "Write your answer in the following format:\nAnswer: [answer]\n\n"
-    "{demos}Question: {question}\n\n{context}\n\nQuestion: {question}"
+from lib.prompts import (
+    PASSAGE_TEMPLATE, PASSAGE_TEMPLATE_NO_TITLE,
+    QA_INSTRUCTION as INSTRUCTION,
+    DEMO_TEMPLATE, HELMET_TEMPLATE, HELMET_TEMPLATE_QUERY_BEFORE, HELMET_TEMPLATE_QUERY_BOTH,
 )
 
 DATASET_CONFIG = {
@@ -70,6 +48,14 @@ DATASET_CONFIG = {
 
 
 def parse_output(output: str, prefix: str = "Answer:") -> str | None:
+    """Extract the answer from model output by looking for a prefix pattern.
+
+    The model is trained to output "Answer: <text>", but may include extra text.
+    This function tries two strategies in order:
+      1. Find text after "Answer:" (or custom prefix) up to newline
+      2. Fall back to the first line of output
+    Returns None if no non-empty answer can be extracted.
+    """
     patterns = [
         re.compile(f"(?:{prefix})(.*?)(?:\\n|$)", flags=re.IGNORECASE),
         re.compile(r"(?:^)(.*?)(?:\n|$)"),
@@ -90,12 +76,23 @@ def _format_passage(ctx, no_titles=False):
 
 
 def build_demos(demo_data, sample, shots, no_titles=False):
+    """Build few-shot demonstration examples for base model evaluation.
+
+    Trained models use 0 shots (the alpaca template already provides structure).
+    Base models need few-shot demos to understand the expected output format.
+
+    Uses a deterministic hash of the question to select demos, ensuring
+    reproducible evaluation while avoiding using the test question as a demo.
+    """
     if shots == 0:
         return ""
+    # Deterministic demo selection: hash the question for reproducible shuffling
     h = int(hashlib.sha256(str(sample["question"]).encode()).hexdigest(), 16) % 2**31
     rng = random.Random(h)
+    # Exclude the current question from the demo pool to prevent leakage
     demos = [d for d in demo_data if d.get("question") != sample.get("question")]
     rng.shuffle(demos)
+    # Deduplicate by question text (some datasets have duplicate questions)
     seen, unique = set(), []
     for d in demos:
         k = d.get("question", "")
@@ -104,6 +101,7 @@ def build_demos(demo_data, sample, shots, no_titles=False):
             unique.append(d)
         if len(unique) >= shots:
             break
+    # Format each demo as: documents + question + answer
     texts = []
     for d in unique:
         docs = "\n\n".join(_format_passage(c, no_titles) for c in d.get("ctxs", []))
@@ -123,21 +121,35 @@ def extract_after_thinking(text):
 
 
 def compute_metrics(prediction, answers):
+    """Compute QA metrics with multiple extraction strategies.
+
+    The model might output the answer in several formats:
+      1. Raw output (e.g. "The answer is Paris")
+      2. Structured output (e.g. "Answer: Paris")
+      3. After thinking (e.g. "<think>reasoning...</think>Answer: Paris")
+
+    We try all extraction strategies and take the best score for each metric,
+    giving the model credit for correct answers regardless of format.
+    """
+    # Strategy 1: Score the raw prediction directly
     em = max_over_answers(exact_match, prediction, answers)
     sub_em = max_over_answers(substring_match, prediction, answers)
     f1 = max_over_answers(token_f1, prediction, answers)
+
+    # Strategy 2: Parse out "Answer: ..." prefix if present
     parsed = parse_output(prediction)
     if parsed:
         em = max(em, max_over_answers(exact_match, parsed, answers))
         sub_em = max(sub_em, max_over_answers(substring_match, parsed, answers))
         f1 = max(f1, max_over_answers(token_f1, parsed, answers))
 
-    # Also try extracting answer after </think> tag
+    # Strategy 3: Extract text after </think> tag (for thinking-enabled models)
     after_think = extract_after_thinking(prediction)
     if after_think:
         em = max(em, max_over_answers(exact_match, after_think, answers))
         sub_em = max(sub_em, max_over_answers(substring_match, after_think, answers))
         f1 = max(f1, max_over_answers(token_f1, after_think, answers))
+        # Also try parsing "Answer: ..." from the post-thinking text
         parsed_think = parse_output(after_think)
         if parsed_think:
             em = max(em, max_over_answers(exact_match, parsed_think, answers))
