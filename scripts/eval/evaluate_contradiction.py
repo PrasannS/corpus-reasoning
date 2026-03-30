@@ -61,7 +61,7 @@ def main():
     add_vllm_args(parser)
     parser.add_argument("--eval-data", type=str, required=True)
     parser.add_argument("--max-test-samples", type=int, default=200)
-    parser.set_defaults(max_tokens=200, max_model_len=8192, output_file="outputs/contradiction_eval_results.json")
+    parser.set_defaults(max_tokens=200, max_model_len=128000, output_file="outputs/contradiction_eval_results.json")
     args = parser.parse_args()
 
     examples = load_jsonl(args.eval_data)

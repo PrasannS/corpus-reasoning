@@ -175,30 +175,3 @@ def build_prompt(example, task="retrieval", query_position="after",
         prompt = f"{instruction}\n\n{input_text}\n"
 
     return prompt, output
-
-
-def build_alpaca_example(example, task="retrieval", query_position="after",
-                         use_titles=True):
-    """Build an alpaca-format dict (instruction, input, output) from unified example.
-
-    This is a convenience for generating training data in the old alpaca format,
-    useful for Axolotl standard attention training which expects this format.
-    """
-    docs = example["documents"]
-    queries = example["queries"]
-    instruction = _get_instruction(example, task)
-    output = _build_output(example, task)
-
-    if not docs:
-        input_text = _build_questions_block(queries)
-    else:
-        context = _format_documents(docs, task, use_titles=use_titles)
-        questions = _build_questions_block(queries)
-        if query_position == "before":
-            input_text = f"{questions}\n\n{context}"
-        elif query_position == "both":
-            input_text = f"{questions}\n\n{context}\n\n{questions}"
-        else:
-            input_text = f"{context}\n\n{questions}"
-
-    return {"instruction": instruction, "input": input_text, "output": output}

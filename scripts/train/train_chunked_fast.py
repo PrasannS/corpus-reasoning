@@ -39,11 +39,11 @@ import json as _json
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # scripts/ — for lib.*
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # same subdir — for sibling imports
-from lib.io import load_jsonl, ALPACA_TEMPLATE
+from lib.io import load_jsonl
 from lib.data_format import build_prompt
 from lib.chunked_attention import (
     DOC_START, DOC_END, setup_tokenizer, wrap_documents,
-    reorder_query, find_chunk_spans,
+    find_chunk_spans,
 )
 
 
@@ -67,8 +67,6 @@ class ChunkedDataset(Dataset):
         self.before_dummy = before_dummy
         self.after_dummy = after_dummy
         self.response_marker = tokenizer.encode("### Response:\n", add_special_tokens=False)
-        # Detect format: unified (has "documents") vs legacy (has "instruction"/"input"/"output")
-        self.unified = "documents" in self.examples[0] if self.examples else False
 
     def __len__(self):
         return len(self.examples)
@@ -89,22 +87,14 @@ class ChunkedDataset(Dataset):
 
     def __getitem__(self, idx):
         ex = self.examples[idx]
-
-        if self.unified:
-            # Unified format: build prompt from structured data at training time
-            prompt, output = build_prompt(
-                ex, task=self.task, query_position=self.query_position,
-                use_titles=self.use_titles, before_dummy=self.before_dummy,
-                after_dummy=self.after_dummy, use_alpaca=True,
-            )
-        else:
-            # Legacy alpaca format: instruction/input/output fields
-            input_text = reorder_query(ex["input"], self.query_position)
-            prompt = ALPACA_TEMPLATE.format(instruction=ex["instruction"], input=input_text)
-            output = ex["output"]
+        prompt, output = build_prompt(
+            ex, task=self.task, query_position=self.query_position,
+            use_titles=self.use_titles, before_dummy=self.before_dummy,
+            after_dummy=self.after_dummy, use_alpaca=True,
+        )
 
         # Insert <doc_start>/<doc_end> boundary tokens around each document
-        prompt = wrap_documents(prompt) if DOC_START not in prompt else prompt
+        prompt = wrap_documents(prompt)
         full_text = prompt + output + self.tokenizer.eos_token
 
         encoding = self.tokenizer(

@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # scripts/ — 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # same subdir — for sibling imports
 
 from lib.io import load_jsonl, save_results, format_alpaca_prompt
+from lib.data_format import build_prompt
 from lib.metrics import (
     normalize_answer, exact_match, substring_match, token_f1,
     max_over_answers, aggregate,
@@ -227,7 +228,7 @@ def generate_eval_data(args, rng):
 
 
 def load_eval_from_jsonl(path, max_samples):
-    """Load pre-generated eval data from JSONL."""
+    """Load pre-generated eval data from unified-format JSONL."""
     raw = load_jsonl(path)
     if max_samples and len(raw) > max_samples:
         random.seed(42)
@@ -235,16 +236,11 @@ def load_eval_from_jsonl(path, max_samples):
 
     examples = []
     for ex in raw:
-        # Parse questions from the input text
-        input_text = ex["input"]
-        questions = re.findall(r"Question \d+: (.+)", input_text)
-        # Parse answers from output
-        answers = [a.strip() for a in ex["output"].split(",")]
         examples.append({
-            "input": input_text,
-            "questions": questions,
-            "answers": answers,
-            "num_docs": input_text.count("Document (Title:") + input_text.count("Document:"),
+            "unified": ex,
+            "questions": ex["queries"],
+            "answers": ex["answers"],
+            "num_docs": len(ex["documents"]),
         })
     return examples
 
@@ -291,21 +287,27 @@ def main():
 
     prompts = []
     for ex in eval_examples:
-        input_text = ex["input"]
-        if args.query_position == "before":
-            # Move questions before documents
-            parts = input_text.rsplit("\n\n", 1)
-            if len(parts) == 2:
-                input_text = f"{parts[1]}\n\n{parts[0]}"
-        elif args.query_position == "both":
-            parts = input_text.rsplit("\n\n", 1)
-            if len(parts) == 2:
-                input_text = f"{parts[1]}\n\n{parts[0]}\n\n{parts[1]}"
-
-        if use_alpaca:
-            prompt = format_alpaca_prompt(INSTRUCTION, input_text)
+        if "unified" in ex:
+            # Unified format: use build_prompt
+            prompt, _ = build_prompt(
+                ex["unified"], task="qa", query_position=args.query_position,
+                use_alpaca=use_alpaca,
+            )
         else:
-            prompt = f"{INSTRUCTION}\n\n{input_text}\nAnswers:"
+            # On-the-fly generated: already has "input" field
+            input_text = ex["input"]
+            if args.query_position == "before":
+                parts = input_text.rsplit("\n\n", 1)
+                if len(parts) == 2:
+                    input_text = f"{parts[1]}\n\n{parts[0]}"
+            elif args.query_position == "both":
+                parts = input_text.rsplit("\n\n", 1)
+                if len(parts) == 2:
+                    input_text = f"{parts[1]}\n\n{parts[0]}\n\n{parts[1]}"
+            if use_alpaca:
+                prompt = format_alpaca_prompt(INSTRUCTION, input_text)
+            else:
+                prompt = f"{INSTRUCTION}\n\n{input_text}\nAnswers:"
 
         prompts.append(prompt)
 

@@ -14,14 +14,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # scripts/ — for lib.*
-from lib.io import ALPACA_TEMPLATE, load_jsonl, format_alpaca_prompt, insert_dummy_tokens
+from lib.io import format_alpaca_prompt, insert_dummy_tokens
 from lib.data_format import build_prompt
-from lib.prompts import (
-    PASSAGE_TEMPLATE,
-    QA_INSTRUCTION, MULTI_QA_INSTRUCTION,
-    RETRIEVAL_INSTRUCTION_SINGLE, RETRIEVAL_INSTRUCTION_MULTI_DOC,
-    RETRIEVAL_INSTRUCTION_MULTI_QUERY,
-)
+from lib.prompts import PASSAGE_TEMPLATE, QA_INSTRUCTION
 
 EXAMPLES_DIR = Path("examples")
 EXAMPLES_DIR.mkdir(exist_ok=True)
@@ -37,27 +32,12 @@ def count_docs(input_text):
     return n
 
 
-def format_train_example(ex):
-    """Format a training example using alpaca template (matches Axolotl training).
-
-    Supports both unified format (documents/queries) and legacy (instruction/input/output).
-    """
-    if "documents" in ex:
-        return build_prompt(ex, task="qa", use_alpaca=True)
-    prompt = format_alpaca_prompt(ex["instruction"], ex["input"])
-    return prompt, ex["output"]
-
-
-def fmt_unified(task="retrieval", query_position="after", before_dummy=0, after_dummy=0):
+def fmt_unified(task="qa", query_position="after", before_dummy=0, after_dummy=0):
     """Return a formatter function for unified-format examples."""
     def _fmt(ex):
-        if "documents" in ex:
-            return build_prompt(ex, task=task, query_position=query_position,
-                                before_dummy=before_dummy, after_dummy=after_dummy,
-                                use_alpaca=True)
-        # Fallback for legacy format
-        prompt = format_alpaca_prompt(ex["instruction"], ex["input"])
-        return prompt, ex["output"]
+        return build_prompt(ex, task=task, query_position=query_position,
+                            before_dummy=before_dummy, after_dummy=after_dummy,
+                            use_alpaca=True)
     return _fmt
 
 
@@ -66,7 +46,8 @@ def format_helmet_eval_example(sample, instruction, query_position="after",
     """Format a HELMET eval example the same way evaluate_helmet_rag.py does for trained models.
 
     This replicates the alpaca-format code path from evaluate_helmet_rag.py:load_dataset_for_eval
-    with use_alpaca=True, shots=0 (trained model eval).
+    with use_alpaca=True, shots=0 (trained model eval). HELMET data uses its own format
+    (ctxs list), not our unified format.
     """
     context = "\n\n".join(
         PASSAGE_TEMPLATE.format(**ctx) for ctx in sample.get("ctxs", [])
@@ -86,54 +67,6 @@ def format_helmet_eval_example(sample, instruction, query_position="after",
     prompt = format_alpaca_prompt(instruction, input_text)
     answers = sample["answers"]
     return prompt, answers
-
-
-def format_multi_hotpotqa_eval_example(ex, instruction, query_position="after"):
-    """Format a multi-hotpotqa eval example from JSONL the way evaluate_multi_hotpotqa.py does."""
-    input_text = ex["input"]
-
-    if query_position == "before":
-        parts = input_text.rsplit("\n\n", 1)
-        if len(parts) == 2:
-            input_text = f"{parts[1]}\n\n{parts[0]}"
-    elif query_position == "both":
-        parts = input_text.rsplit("\n\n", 1)
-        if len(parts) == 2:
-            input_text = f"{parts[1]}\n\n{parts[0]}\n\n{parts[1]}"
-
-    prompt = format_alpaca_prompt(instruction, input_text)
-    return prompt, ex["output"]
-
-
-def format_retrieval_eval_example(ex, instruction, task, query_position="after"):
-    """Format a retrieval eval example the way evaluate_retrieval.py does."""
-    input_text = ex["input"]
-
-    if task == "multi-hotpotqa":
-        sep_point = input_text.rfind("\nQuestion 1:")
-        if sep_point >= 0:
-            context_part = input_text[:sep_point]
-            questions_part = input_text[sep_point:]
-        else:
-            context_part = input_text
-            questions_part = ""
-
-        if query_position == "before":
-            input_text = f"{questions_part.strip()}\n\n{context_part}"
-        elif query_position == "both":
-            input_text = f"{questions_part.strip()}\n\n{context_part}\n\n{questions_part.strip()}"
-    else:
-        parts = input_text.rsplit("\n\nQuestion:", 1)
-        if len(parts) == 2:
-            context_part = parts[0]
-            question_part = f"Question:{parts[1]}"
-            if query_position == "before":
-                input_text = f"{question_part}\n\n{context_part}"
-            elif query_position == "both":
-                input_text = f"{question_part}\n\n{context_part}\n\n{question_part}"
-
-    prompt = format_alpaca_prompt(instruction, input_text)
-    return prompt, ex["output"]
 
 
 def write_section(f, label, prompt, output, idx):
@@ -165,10 +98,13 @@ def add_task(name, description, train_file, eval_file, train_fmt, eval_fmt):
     TASK_EXAMPLES.append((name, description, train_file, eval_file, train_fmt, eval_fmt))
 
 
-# ── QA tasks ──
+# ── Formatter shortcuts ──
+# Training data uses unified format; HELMET eval data uses its own KILT format.
 
-def fmt_train(ex):
-    return format_train_example(ex)
+fmt_qa = fmt_unified(task="qa")
+fmt_qa_qboth = fmt_unified(task="qa", query_position="both")
+fmt_retrieval = fmt_unified(task="retrieval")
+fmt_qa_qboth_dummy = fmt_unified(task="qa", query_position="both", before_dummy=10)
 
 def fmt_helmet_qa_eval(sample):
     return format_helmet_eval_example(sample, QA_INSTRUCTION)
@@ -176,19 +112,9 @@ def fmt_helmet_qa_eval(sample):
 def fmt_helmet_qa_eval_qboth(sample):
     return format_helmet_eval_example(sample, QA_INSTRUCTION, query_position="both")
 
-def fmt_multi_qa_eval(ex):
-    return format_multi_hotpotqa_eval_example(ex, MULTI_QA_INSTRUCTION)
-
-# ── Retrieval tasks ──
-
-def fmt_retrieval_nq_eval(ex):
-    return format_retrieval_eval_example(ex, RETRIEVAL_INSTRUCTION_SINGLE, "nq")
-
-def fmt_retrieval_hotpotqa_eval(ex):
-    return format_retrieval_eval_example(ex, RETRIEVAL_INSTRUCTION_MULTI_DOC, "hotpotqa")
-
-def fmt_retrieval_multi_eval(ex):
-    return format_retrieval_eval_example(ex, RETRIEVAL_INSTRUCTION_MULTI_QUERY, "multi-hotpotqa")
+def fmt_helmet_qa_eval_qboth_dummy(sample):
+    return format_helmet_eval_example(sample, QA_INSTRUCTION, query_position="both",
+                                       before_dummy=10)
 
 
 # QA tasks
@@ -196,71 +122,56 @@ add_task("nq_qa",
          "NQ question-answering: 20 documents, output is the answer text",
          "data/nq_train_k20_random_2500.jsonl",
          "data/data/kilt/nq-dev-multikilt_1000_k20_dep6.jsonl",
-         fmt_train, fmt_helmet_qa_eval)
+         fmt_qa, fmt_helmet_qa_eval)
 
 add_task("nq_qa_qboth",
          "NQ question-answering with query-both: question before and after documents",
-         "data/nq_train_k20_random_2500_qboth.jsonl",
+         "data/nq_train_k20_random_2500.jsonl",
          "data/data/kilt/nq-dev-multikilt_1000_k20_dep6.jsonl",
-         fmt_train, fmt_helmet_qa_eval_qboth)
+         fmt_qa_qboth, fmt_helmet_qa_eval_qboth)
 
 add_task("hotpotqa_qa",
          "HotpotQA multi-hop QA: 2 supporting docs among 20 total, output is the answer",
          "data/hotpotqa_train_k20_shuffled_bridge_2500.jsonl",
          "data/data/kilt/hotpotqa-dev-multikilt_1000_k20_dep3.jsonl",
-         fmt_train, fmt_helmet_qa_eval)
+         fmt_qa, fmt_helmet_qa_eval)
 
 add_task("hotpotqa_qa_qboth",
          "HotpotQA multi-hop QA with query-both",
-         "data/hotpotqa_train_k20_shuffled_bridge_2500_qboth.jsonl",
+         "data/hotpotqa_train_k20_shuffled_bridge_2500.jsonl",
          "data/data/kilt/hotpotqa-dev-multikilt_1000_k20_dep3.jsonl",
-         fmt_train, fmt_helmet_qa_eval_qboth)
+         fmt_qa_qboth, fmt_helmet_qa_eval_qboth)
 
 add_task("multi_hotpotqa_qa",
          "Multi-query HotpotQA QA: 10 queries, comma-separated answers",
          "data/multi_hotpotqa_train_n10_k50_bridge_5000.jsonl",
-         # Eval is generated on-the-fly by evaluate_multi_hotpotqa.py; use training file
-         # with offset to show different examples for the eval section
          "data/multi_hotpotqa_train_n10_k50_bridge_5000.jsonl",
-         fmt_train, fmt_multi_qa_eval)
+         fmt_qa, fmt_qa)
 
 # Retrieval tasks
 add_task("nq_retrieval",
          "NQ retrieval: 20 docs with IDs, output is the relevant document ID",
-         "data/nq_train_k20_random_1000_retrieval.jsonl",
-         "data/nq_train_k20_random_500_retrieval.jsonl",
-         fmt_train, fmt_retrieval_nq_eval)
+         "data/nq_train_k20_random_1000.jsonl",
+         "data/nq_train_k20_random_500.jsonl",
+         fmt_retrieval, fmt_retrieval)
 
 add_task("hotpotqa_retrieval",
          "HotpotQA retrieval: 20 docs with IDs, output is the 2 relevant document IDs",
-         "data/hotpotqa_train_k20_shuffled_retrieval_bridge_2500.jsonl",
-         "data/hotpotqa_eval_k20_shuffled_retrieval_bridge_500.jsonl",
-         fmt_train, fmt_retrieval_hotpotqa_eval)
-
-# ── Dummy token tasks ──
-
-def fmt_train_dummy_before(ex):
-    """Format training example with before_dummy=10 (matches convert_to_dummy.py --before-dummy 10)."""
-    modified = dict(ex)
-    modified["input"] = insert_dummy_tokens(ex["input"], before_dummy=10)
-    return format_train_example(modified)
-
-def fmt_helmet_qa_eval_qboth_dummy_before(sample):
-    """Format eval example with qboth + before_dummy=10."""
-    return format_helmet_eval_example(sample, QA_INSTRUCTION, query_position="both",
-                                       before_dummy=10)
+         "data/hotpotqa_train_k20_shuffled_bridge_2500.jsonl",
+         "data/hotpotqa_eval_k20_shuffled_bridge_500.jsonl",
+         fmt_retrieval, fmt_retrieval)
 
 add_task("hotpotqa_qa_qboth_dummy_before",
          "HotpotQA QA with query-both and 10 dummy tokens before documents",
-         "data/hotpotqa_train_k10_shuffled_retrieval_bridge_5000_qboth_bd10.jsonl",
+         "data/hotpotqa_train_k10_shuffled_bridge_5000.jsonl",
          "data/data/kilt/hotpotqa-dev-multikilt_1000_k20_dep3.jsonl",
-         fmt_train_dummy_before, fmt_helmet_qa_eval_qboth_dummy_before)
+         fmt_qa_qboth_dummy, fmt_helmet_qa_eval_qboth_dummy)
 
 add_task("multi_hotpotqa_retrieval",
          "Multi-query HotpotQA retrieval: per-query relevant document IDs",
-         "data/multi_hotpotqa_train_retrieval_n10_suponly_bridge_500.jsonl",
-         "data/multi_hotpotqa_eval_retrieval_n10_suponly_bridge_100.jsonl",
-         fmt_train, fmt_retrieval_multi_eval)
+         "data/multi_hotpotqa_train_n10_suponly_bridge_500.jsonl",
+         "data/multi_hotpotqa_eval_n10_suponly_bridge_100.jsonl",
+         fmt_retrieval, fmt_retrieval)
 
 
 def load_examples(path, n, offset=0):

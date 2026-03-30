@@ -29,7 +29,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # scripts/ — for lib.*
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # same subdir — for sibling imports
 
-from lib.io import load_jsonl, save_results, format_alpaca_prompt, insert_dummy_tokens
+from lib.io import load_jsonl, save_results
 from lib.data_format import build_prompt, is_multi_query
 from lib.metrics import (
     parse_doc_ids, retrieval_exact_match, retrieval_recall,
@@ -58,26 +58,20 @@ TASK_INSTRUCTIONS = {
 def detect_task(examples):
     """Auto-detect task type from data format.
 
-    Supports both unified format (documents/queries/gold_doc_indices) and
-    legacy format (instruction/input/output).
+    Inspects unified-format fields to determine the task:
+    - Multiple queries → multi-hotpotqa
+    - Multiple gold docs (flat list) → hotpotqa
+    - Single gold doc → nq
     """
     ex = examples[0]
-    # Unified format detection
-    if "queries" in ex:
-        if len(ex["queries"]) > 1:
-            return "multi-hotpotqa"
-        gold = ex.get("gold_doc_indices", [])
-        if isinstance(gold, list) and len(gold) > 1 and not isinstance(gold[0], list):
-            return "hotpotqa"
-        if isinstance(gold, list) and gold and isinstance(gold[0], list):
-            return "multi-hotpotqa"
-        return "nq"
-    # Legacy format detection
-    output = ex["output"]
-    if "Q1:" in output or "Q2:" in output:
+    if len(ex["queries"]) > 1:
         return "multi-hotpotqa"
-    ids = parse_doc_ids(output)
-    return "nq" if len(ids) <= 1 else "hotpotqa"
+    gold = ex.get("gold_doc_indices", [])
+    if isinstance(gold, list) and gold and isinstance(gold[0], list):
+        return "multi-hotpotqa"
+    if isinstance(gold, list) and len(gold) > 1:
+        return "hotpotqa"
+    return "nq"
 
 
 def extract_after_thinking(text):
@@ -207,78 +201,26 @@ def main():
     fmt_label = "alpaca" if use_alpaca else "plain"
     print(f"  Prompt format: {fmt_label}")
 
-    # --- Build prompts and parse gold labels ---
-    # Supports both unified format (documents/queries/gold_doc_indices) and
-    # legacy format (instruction/input/output).
-    is_unified = "documents" in raw[0]
+    # --- Build prompts and parse gold labels from unified-format JSONL ---
     prompts = []
     gold_data = []
     for ex in raw:
-        if is_unified:
-            # Unified format: build prompt from structured data
-            prompt, expected_output = build_prompt(
-                ex, task="retrieval", query_position=args.query_position,
-                before_dummy=args.before_dummy, after_dummy=args.after_dummy,
-                use_alpaca=use_alpaca,
-            )
-            prompts.append(prompt)
+        prompt, _ = build_prompt(
+            ex, task="retrieval", query_position=args.query_position,
+            before_dummy=args.before_dummy, after_dummy=args.after_dummy,
+            use_alpaca=use_alpaca,
+        )
+        prompts.append(prompt)
 
-            # Extract gold IDs directly from structured data
-            gold = ex["gold_doc_indices"]
-            if task == "multi-hotpotqa":
-                # Per-query gold: list of lists, convert to 1-indexed sets
-                per_query_gold = [set(g + 1 for g in gids) for gids in gold]
-                gold_data.append({"per_query_gold": per_query_gold,
-                                  "num_queries": len(ex["queries"])})
-            else:
-                # Single/multi-doc: flat list, convert to 1-indexed set
-                gids = gold[0] if gold and isinstance(gold[0], list) else gold
-                gold_data.append({"gold_ids": set(g + 1 for g in gids)})
+        # Extract gold IDs directly from structured data (convert to 1-indexed)
+        gold = ex["gold_doc_indices"]
+        if task == "multi-hotpotqa":
+            per_query_gold = [set(g + 1 for g in gids) for gids in gold]
+            gold_data.append({"per_query_gold": per_query_gold,
+                              "num_queries": len(ex["queries"])})
         else:
-            # Legacy format: instruction/input/output fields
-            input_text = ex["input"]
-
-            if task == "multi-hotpotqa":
-                sep_point = input_text.rfind("\nQuestion 1:")
-                if sep_point >= 0:
-                    context_part = input_text[:sep_point]
-                    questions_part = input_text[sep_point:]
-                else:
-                    context_part = input_text
-                    questions_part = ""
-                if args.query_position == "before":
-                    input_text = f"{questions_part.strip()}\n\n{context_part}"
-                elif args.query_position == "both":
-                    input_text = f"{questions_part.strip()}\n\n{context_part}\n\n{questions_part.strip()}"
-            else:
-                parts = input_text.rsplit("\n\nQuestion:", 1)
-                if len(parts) == 2:
-                    context_part = parts[0]
-                    question_part = f"Question:{parts[1]}"
-                    if args.query_position == "before":
-                        input_text = f"{question_part}\n\n{context_part}"
-                    elif args.query_position == "both":
-                        input_text = f"{question_part}\n\n{context_part}\n\n{question_part}"
-
-            if args.before_dummy > 0 or args.after_dummy > 0:
-                input_text = insert_dummy_tokens(input_text, args.before_dummy, args.after_dummy)
-
-            if use_alpaca:
-                prompt = format_alpaca_prompt(instruction, input_text)
-            else:
-                prompt = f"{instruction}\n\n{input_text}\n"
-            prompts.append(prompt)
-
-            gold_output = ex["output"]
-            if task == "multi-hotpotqa":
-                num_queries = len(re.findall(r"Q\d+:", gold_output))
-                per_query_gold = []
-                for part in gold_output.split(";"):
-                    part = re.sub(r'^Q\d+:\s*', '', part.strip())
-                    per_query_gold.append(parse_doc_ids(part))
-                gold_data.append({"per_query_gold": per_query_gold, "num_queries": num_queries})
-            else:
-                gold_data.append({"gold_ids": parse_doc_ids(gold_output)})
+            gids = gold[0] if gold and isinstance(gold[0], list) else gold
+            gold_data.append({"gold_ids": set(g + 1 for g in gids)})
 
     # Load model and run inference
     llm, lora_request = load_model(args)

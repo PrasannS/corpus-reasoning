@@ -24,12 +24,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # scripts/ — for lib.*
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # same subdir — for sibling imports
 from lib.io import load_jsonl, save_results
-from lib.io import format_alpaca_prompt, insert_dummy_tokens
 from lib.data_format import build_prompt
 from lib.metrics import exact_match, substring_match, token_f1, max_over_answers, aggregate
 from lib.chunked_attention import (
     DOC_START, DOC_END, setup_tokenizer, wrap_documents,
-    build_chunked_causal_mask, reorder_query, find_chunk_spans,
+    build_chunked_causal_mask, find_chunk_spans,
 )
 from evaluate_helmet_rag import DATASET_CONFIG, PASSAGE_TEMPLATE, build_demos, parse_output
 
@@ -203,36 +202,26 @@ def load_helmet_examples(dataset_name, num_docs, max_samples, shots,
 def load_alpaca_examples(path, max_samples, query_position="after",
                          before_dummy=0, after_dummy=0, task="qa",
                          use_titles=True):
-    """Load JSONL (unified or legacy alpaca) and build prompts with doc boundary tokens."""
+    """Load unified-format JSONL and build prompts with doc boundary tokens."""
     examples = load_jsonl(path)
     if max_samples and len(examples) > max_samples:
         import random
         random.seed(42)
         examples = random.sample(examples, max_samples)
 
-    is_unified = "documents" in examples[0] if examples else False
     result = []
     for ex in examples:
-        if is_unified:
-            # Unified format: build prompt from structured data
-            prompt, output = build_prompt(
-                ex, task=task, query_position=query_position,
-                use_titles=use_titles, before_dummy=before_dummy,
-                after_dummy=after_dummy, use_alpaca=True,
-            )
-            answers = ex["answers"]
-        else:
-            # Legacy alpaca format
-            input_text = reorder_query(ex["input"], query_position)
-            if before_dummy > 0 or after_dummy > 0:
-                input_text = insert_dummy_tokens(input_text, before_dummy, after_dummy)
-            prompt = format_alpaca_prompt(ex["instruction"], input_text)
-            answers = ex["output"] if isinstance(ex["output"], list) else [ex["output"]]
-
-        # Wrap documents with boundary tokens for chunked attention
-        prompt = wrap_documents(prompt) if DOC_START not in prompt else prompt
-        result.append({"prompt": prompt, "answers": answers,
-                       "question": ex.get("queries", [ex.get("question", "")])[0] if is_unified else ex.get("question", "")})
+        prompt, output = build_prompt(
+            ex, task=task, query_position=query_position,
+            use_titles=use_titles, before_dummy=before_dummy,
+            after_dummy=after_dummy, use_alpaca=True,
+        )
+        prompt = wrap_documents(prompt)
+        result.append({
+            "prompt": prompt,
+            "answers": ex["answers"],
+            "question": ex["queries"][0],
+        })
     return result
 
 

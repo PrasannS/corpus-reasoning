@@ -98,7 +98,7 @@ tail -f outputs/batch_JOBID.log
 
 - Training configs go in `configs/` as YAML (axolotl format). Task-specific params at top, common LoRA/optimizer settings below.
 - Data generation scripts go in `scripts/data/` and write to `data/`
-- **Unified data format**: JSONL with structured fields (`documents`, `queries`, `answers`, `gold_doc_indices`, `source`). Documents stored as list of `{title, text}` dicts. All formatting (query position, task type, dummy tokens, alpaca wrapping) happens at train/eval time via `lib/data_format.py:build_prompt()`. Legacy alpaca format (`instruction`, `input`, `output`) is still supported for backward compatibility.
+- **Unified data format**: JSONL with structured fields (`documents`, `queries`, `answers`, `gold_doc_indices`, `source`). Documents stored as list of `{title, text}` dicts. All formatting (query position, task type, dummy tokens, alpaca wrapping) happens at train/eval time via `lib/data_format.py:build_prompt()`.
 - Shared code goes in `scripts/lib/` (io.py, prompts.py, vllm_utils.py, metrics.py, chunked_attention.py, common.sh)
 - **Experiment tracking**: All experiment results and reproduction instructions go in `results/` as markdown files (one per task). Each file should include: task description, dataset details, config parameters, exact commands to reproduce, and results tables. Update these files whenever a new experiment is run.
 - **Eval prompt must exactly match training prompt.** This means:
