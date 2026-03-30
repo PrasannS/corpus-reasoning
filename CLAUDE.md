@@ -8,9 +8,10 @@ Long-context training and evaluation pipeline for language models. Fine-tunes mo
 
 - **Training**: Axolotl + DeepSpeed ZeRO for multi-GPU LoRA fine-tuning
 - **Evaluation**: vLLM for fast batched inference, comparing base vs. finetuned models
-- **Two separate conda environments** to avoid dependency conflicts:
+- **Three separate conda environments** to avoid dependency conflicts:
   - `corpus-reasoning` — training (axolotl, deepspeed, flash-attn)
   - `corpus-reasoning-eval` — evaluation and data generation (vllm, datasets)
+  - `corpus-reasoning-retrieval` — dense retrieval baselines (sentence-transformers, pylate)
 
 ## Key Paths
 
@@ -32,6 +33,9 @@ python scripts/generate_hotpotqa_data.py --num-examples 5000 --num-docs 20 --que
 python scripts/generate_multi_hotpotqa_data.py --num-examples 1000 --num-queries 10
 python scripts/convert_to_qboth.py data/input.jsonl data/output_qboth.jsonl
 python scripts/convert_to_qbefore.py data/input.jsonl data/output_qbefore.jsonl
+python scripts/convert_to_dummy.py data/input.jsonl data/output_bd10.jsonl --before-dummy 10
+python scripts/convert_to_dummy.py data/input.jsonl data/output_ad10.jsonl --after-dummy 10
+python scripts/convert_to_dummy.py data/input.jsonl data/output_bd10.jsonl --before-dummy 10 --tokenizer Qwen/Qwen3.5-0.8B-Base
 
 # Train - standard attention (use corpus-reasoning env)
 bash scripts/train.sh configs/nq_rag_lora_multigpu.yml
@@ -49,6 +53,12 @@ python scripts/evaluate_retrieval.py --eval-data data/hotpotqa_eval_k20_shuffled
 
 # Evaluate - chunked attention (use corpus-reasoning-eval env)
 python scripts/evaluate_chunked.py --datasets nq --num-docs 20 --query-position both --lora-path ./outputs/model
+
+# Dense retrieval baselines (use corpus-reasoning-retrieval env)
+python scripts/generate_retrieval_triplets.py --dataset hotpotqa --num-examples 5000
+python scripts/train_retrieval_baseline.py --mode dpr --train-data data/hotpotqa_train_triplets_bridge_10000.jsonl
+python scripts/train_retrieval_baseline.py --mode colbert --train-data data/hotpotqa_train_triplets_bridge_10000.jsonl
+python scripts/evaluate_retrieval_baseline.py --mode dpr --model-path outputs/model --eval-data data/hotpotqa_eval_k20_shuffled_retrieval_bridge_500.jsonl
 ```
 
 ## SLURM (Batch Jobs)
@@ -94,6 +104,12 @@ tail -f outputs/batch_JOBID.log
 - **Commit to git frequently.** After completing a meaningful unit of work (new script, config, experiment results, bug fix), commit the changes. Don't let work accumulate uncommitted across long sessions.
 - **Always log progress for long-running processes.** When running downloads, extractions, training, or any task that takes more than ~30 seconds, ensure there is a way for the user to monitor progress (e.g., `--progress`, `pv`, `tqdm`, writing to a log file with `tee`, or periodic status lines). Provide the user a `tail -f` command or similar to watch the output. Avoid approaches that flood Claude's context with huge outputs — prefer writing to a file the user can `tail`.
 - **Never suppress command output with `| tail -N` for background commands.** When running commands in the background, always use `tee` to write to a log file so partial output is visible. Piping through `tail` hides all output until the command finishes, making it impossible to monitor progress or see errors early.
+
+## Package Management
+
+- **Use `mamba` for environment creation** (e.g., `mamba create -n myenv python=3.11`). It is much faster than `conda create`.
+- **Use `pip` (or `uv pip`) for installing packages** into the environment. Prefer `conda run -n myenv pip install ...` over `mamba install`.
+- Activation still uses `conda activate`.
 
 ## Known Issues
 
