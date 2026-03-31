@@ -28,7 +28,6 @@ INSTRUCTION = (
     "If there are no contradicting pairs, output: []"
 )
 
-
 def build_example(contradiction_pairs, filler_claims, num_claims, rng):
     claims = []
     pair_indices = []

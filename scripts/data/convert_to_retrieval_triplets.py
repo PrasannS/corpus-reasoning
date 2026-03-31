@@ -52,10 +52,7 @@ def convert_to_triplets(examples, rng, max_triplets=None):
         documents = ex["documents"]
         queries = ex["queries"]
         gold_indices = ex["gold_doc_indices"]
-
-        if not documents or not queries:
-            continue
-
+        
         # Normalize gold_indices to per-query lists
         if queries and gold_indices:
             if isinstance(gold_indices[0], list):

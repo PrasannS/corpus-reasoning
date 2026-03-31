@@ -1,0 +1,47 @@
+base_model: Qwen/Qwen3.5-0.8B-Base
+
+datasets:
+  - path: data/hotpotqa_train_k20_shuffled_bridge_2500.jsonl
+    type: alpaca
+    ds_type: json
+
+val_set_size: 0.0
+dataset_prepared_path: data/prepared_hotpotqa_std_qboth_qwen_lora
+output_dir: ./outputs/hotpotqa-std-qboth-qwen-lora
+
+wandb_project: corpus-reasoning
+wandb_name: std_qboth_hotpotqa2500_qwen_lora
+
+# Task-specific
+task: retrieval
+query_position: both
+standard_attention: true
+sequence_len: 8192
+micro_batch_size: 1
+gradient_accumulation_steps: 8
+num_epochs: 1
+learning_rate: 5e-4
+
+# LoRA settings
+adapter: lora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules: [gate_proj, down_proj, up_proj, q_proj, v_proj, k_proj, o_proj]
+sample_packing: false
+eval_sample_packing: false
+optimizer: adamw_8bit
+lr_scheduler: cosine
+bf16: auto
+tf32: true
+gradient_checkpointing: true
+flash_attention: false
+logging_steps: 1
+saves_per_epoch: 0
+save_strategy: 'no'
+evals_per_epoch: 0
+warmup_ratio: 0.1
+weight_decay: 0.0
+deepspeed: configs/deepspeed_zero1.json
+special_tokens:
+  pad_token: "<|endoftext|>"

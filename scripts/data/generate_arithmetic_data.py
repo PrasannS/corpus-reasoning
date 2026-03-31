@@ -25,7 +25,6 @@ OPS = {
     "mul": ("*", lambda a, b: a * b),
 }
 
-
 def generate_problem(ops, rng, max_val=999):
     """Generate a single arithmetic problem."""
     op_name = rng.choice(ops)

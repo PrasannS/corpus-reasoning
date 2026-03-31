@@ -101,6 +101,7 @@ tail -f outputs/batch_JOBID.log
 - **Unified data format**: JSONL with structured fields (`documents`, `queries`, `answers`, `gold_doc_indices`, `source`). Documents stored as list of `{title, text}` dicts. All formatting (query position, task type, dummy tokens, alpaca wrapping) happens at train/eval time via `lib/data_format.py:build_prompt()`.
 - Shared code goes in `scripts/lib/` (io.py, prompts.py, vllm_utils.py, metrics.py, chunked_attention.py, common.sh)
 - **Experiment tracking**: All experiment results and reproduction instructions go in `results/` as markdown files (one per task). Each file should include: task description, dataset details, config parameters, exact commands to reproduce, and results tables. Update these files whenever a new experiment is run.
+- **Eval backend must match training type.** Models trained with chunked attention should be evaluated with a chunked backend (`chunked-sdpa` or `chunked-flex`), not `standard` or `vllm`. Models trained with standard attention should use `vllm` or `standard` backend.
 - **Eval prompt must exactly match training prompt.** This means:
   - Trained models (LoRA/full FT) use alpaca prompt format + 0 few-shot demos (training data has no demos)
   - Base models use HELMET prompt format + 2 few-shot demos (standard HELMET eval)
