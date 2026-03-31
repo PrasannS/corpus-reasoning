@@ -1,7 +1,7 @@
 """Unified evaluation script for all tasks and inference backends.
 
 Supports any combination of:
-  Task:    --task {retrieval, qa}
+  Task:    --task {retrieval, qa, contradiction}
   Backend: --backend {vllm, chunked-sdpa, chunked-flex, standard}
   Data:    --eval-data (unified JSONL) or --datasets (HELMET KILT format)
 
@@ -14,6 +14,7 @@ The backend controls how inference is run:
 The task controls prompt formatting and metrics:
   - retrieval: Prompts ask for document IDs, metrics are retrieval EM/recall/precision/F1
   - qa: Prompts ask for answer text, metrics are QA EM/SubEM/F1
+  - contradiction: Prompts ask for contradicting claim pairs, metrics are pair precision/recall/F1/EM
 
 Usage:
     # Retrieval eval with chunked attention
@@ -35,6 +36,7 @@ Usage:
 """
 
 import argparse
+import json
 import re
 import random
 import sys
@@ -63,6 +65,39 @@ from lib.chunked_attention import (
     DOC_START, DOC_END, setup_tokenizer, wrap_documents,
     build_chunked_causal_mask, find_chunk_spans,
 )
+
+# ── Contradiction helpers ──
+
+def parse_pairs(text: str) -> list[list[int]] | None:
+    """Extract list of integer pairs from model output."""
+    text = text.strip()
+    for candidate in [text, re.search(r'\[[\s\S]*\]', text)]:
+        if candidate is None:
+            continue
+        s = candidate if isinstance(candidate, str) else candidate.group()
+        try:
+            parsed = json.loads(s)
+            if isinstance(parsed, list):
+                return [sorted([int(p[0]), int(p[1])]) for p in parsed if isinstance(p, list) and len(p) == 2]
+        except (json.JSONDecodeError, ValueError, TypeError):
+            continue
+    matches = re.findall(r'[\[\(]\s*(\d+)\s*,\s*(\d+)\s*[\]\)]', text)
+    if matches:
+        return [sorted([int(a), int(b)]) for a, b in matches]
+    return [] if text in ("[]", "") else None
+
+
+def pair_metrics(predicted, gold):
+    """Compute precision/recall/F1/EM for predicted vs gold contradiction pairs."""
+    pred_set, gold_set = {tuple(p) for p in predicted}, {tuple(p) for p in gold}
+    if not pred_set and not gold_set:
+        return {"precision": 1.0, "recall": 1.0, "f1": 1.0, "exact_match": 1.0}
+    tp = len(pred_set & gold_set)
+    p = tp / len(pred_set) if pred_set else 0.0
+    r = tp / len(gold_set) if gold_set else 0.0
+    f1 = (2 * p * r / (p + r)) if (p + r) > 0 else 0.0
+    return {"precision": p, "recall": r, "f1": f1, "exact_match": float(pred_set == gold_set)}
+
 
 # Lazy imports for backends
 SamplingParams = None
@@ -105,6 +140,19 @@ def load_hf_model(args):
 
     if args.lora_path:
         from peft import PeftModel
+        from safetensors import safe_open
+        # Check if the LoRA adapter includes lm_head (from embedding resize during
+        # training). If so, resize the base model embeddings to match before loading.
+        adapter_file = Path(args.lora_path) / "adapter_model.safetensors"
+        if adapter_file.exists():
+            with safe_open(str(adapter_file), framework="pt") as f:
+                for key in f.keys():
+                    if "lm_head" in key:
+                        lm_head_size = f.get_tensor(key).shape[0]
+                        if lm_head_size != model.config.vocab_size:
+                            model.resize_token_embeddings(lm_head_size)
+                            print(f"  Resized embeddings to {lm_head_size} to match LoRA adapter")
+                        break
         model = PeftModel.from_pretrained(model, args.lora_path)
         model = model.merge_and_unload()
         print(f"Loaded LoRA from {args.lora_path}")
@@ -523,7 +571,7 @@ def main():
 
     # Task and backend
     parser.add_argument("--task", type=str, default="retrieval",
-                        choices=["qa", "retrieval", "cot_retrieval"])
+                        choices=["qa", "retrieval", "cot_retrieval", "contradiction"])
     parser.add_argument("--backend", type=str, default="vllm",
                         choices=["vllm", "chunked-sdpa", "chunked-flex", "standard"],
                         help="Inference backend")
@@ -556,7 +604,7 @@ def main():
     parser.add_argument("--tensor-parallel-size", type=int, default=1)
     parser.add_argument("--enforce-eager", action="store_true")
     parser.add_argument("--language-model-only", action="store_true")
-    parser.add_argument("--tokenizer", type=str, default="")
+    parser.add_argument("--tokenizer", type=str, default=None)
 
     args = parser.parse_args()
 
@@ -570,6 +618,10 @@ def main():
     if use_alpaca and args.shots != 0:
         print(f"  Auto-setting shots=0 for trained model (training data has no demos)")
         args.shots = 0
+
+    if args.task == "contradiction" and args.max_tokens <= 50:
+        args.max_tokens = 200
+        print(f"  Contradiction: increased max_tokens to {args.max_tokens}")
 
     if args.task == "cot_retrieval" and args.max_tokens <= 50:
         args.max_tokens = 512
@@ -587,7 +639,7 @@ def main():
         model, tokenizer, doc_start_id, doc_end_id = load_hf_model(args)
         device = next(model.parameters()).device
         newline_id = tokenizer.encode("\n", add_special_tokens=False)
-        multiline_output = args.enable_thinking or args.task == "cot_retrieval"
+        multiline_output = args.enable_thinking or args.task in ("cot_retrieval", "contradiction")
         if multiline_output:
             stop_ids = {tokenizer.eos_token_id}
         else:
@@ -596,7 +648,7 @@ def main():
         _import_vllm()
         from lib.vllm_utils import load_model as vllm_load_model, run_inference
         llm, lora_request = vllm_load_model(args)
-        multiline_output = args.enable_thinking or args.task == "cot_retrieval"
+        multiline_output = args.enable_thinking or args.task in ("cot_retrieval", "contradiction")
         if multiline_output:
             sampling_params = SamplingParams(temperature=0.0, max_tokens=args.max_tokens)
         else:
@@ -658,7 +710,9 @@ def main():
             responses = run_inference(llm, prompts, sampling_params, lora_request)
 
         # --- Compute metrics ---
-        if args.task in ("retrieval", "cot_retrieval"):
+        if args.task == "contradiction":
+            results, details = _eval_contradiction(examples, responses)
+        elif args.task in ("retrieval", "cot_retrieval"):
             results, details = _eval_retrieval(examples, responses)
         else:
             results, details = _eval_qa(examples, responses)
@@ -717,6 +771,34 @@ def _eval_retrieval(examples, responses):
     if any("all_correct" in r for r in results_list):
         metric_keys.append("all_correct")
     metrics = aggregate(results_list, metric_keys)
+    return metrics, details
+
+
+def _eval_contradiction(examples, responses):
+    """Evaluate contradiction task: compute pair-level precision/recall/F1/EM."""
+    results_list = []
+    details = []
+    parse_failures = 0
+
+    for ex, resp in zip(examples, responses):
+        gold = ex["gold_doc_indices"]  # list of [a, b] pairs (1-indexed)
+        predicted = parse_pairs(resp)
+        if predicted is None:
+            parse_failures += 1
+            predicted = []
+        m = pair_metrics(predicted, gold)
+        results_list.append(m)
+        details.append({
+            "prediction": resp.strip()[:500],
+            "gold_pairs": gold,
+            "predicted_pairs": predicted,
+            **m,
+        })
+
+    n = len(results_list)
+    metrics = {k: sum(r[k] for r in results_list) / n
+               for k in ["precision", "recall", "f1", "exact_match"]}
+    metrics["parse_rate"] = (n - parse_failures) / n
     return metrics, details
 
 

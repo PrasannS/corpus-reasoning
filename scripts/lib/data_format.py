@@ -36,6 +36,7 @@ from lib.prompts import (
     RETRIEVAL_INSTRUCTION_SINGLE, RETRIEVAL_INSTRUCTION_MULTI_DOC,
     RETRIEVAL_INSTRUCTION_MULTI_QUERY,
     COT_RETRIEVAL_INSTRUCTION_SINGLE, COT_RETRIEVAL_INSTRUCTION_MULTI_DOC,
+    CONTRADICTION_INSTRUCTION, CLAIM_TEMPLATE,
 )
 
 
@@ -56,6 +57,8 @@ def _has_multi_gold(example):
 
 def _get_instruction(example, task):
     """Select the appropriate instruction based on task type and query count."""
+    if task == "contradiction":
+        return CONTRADICTION_INSTRUCTION
     multi = is_multi_query(example)
     if task == "cot_retrieval":
         # CoT retrieval doesn't support multi-query
@@ -85,6 +88,11 @@ def _format_doc(doc, use_titles=True, doc_id=None):
 
 def _format_documents(documents, task, use_titles=True):
     """Format all documents, adding [N] IDs for retrieval tasks."""
+    if task == "contradiction":
+        return "\n".join(
+            CLAIM_TEMPLATE.format(id=i + 1, text=doc["text"])
+            for i, doc in enumerate(documents)
+        )
     use_ids = task in ("retrieval", "cot_retrieval")
     formatted = []
     for i, doc in enumerate(documents):
@@ -130,6 +138,11 @@ def _build_retrieval_ids(gold):
 
 def _build_output(example, task):
     """Build the expected output string from the structured example."""
+    if task == "contradiction":
+        import json
+        # gold_doc_indices stores the contradiction pairs as [[a, b], [c, d]]
+        # These are already 1-indexed claim IDs
+        return json.dumps(example["gold_doc_indices"])
     if task == "cot_retrieval":
         gold = example["gold_doc_indices"]
         cot = example.get("chain_of_thought", "")
@@ -207,6 +220,20 @@ def build_prompt(example, task="retrieval", query_position="after",
 
     # Format documents and questions
     context = _format_documents(docs, task, use_titles=use_titles)
+
+    # Contradiction task: no query, claims are the entire input
+    if task == "contradiction":
+        input_text = context
+        instruction = _get_instruction(example, task)
+        output = _build_output(example, task)
+        if before_dummy > 0 or after_dummy > 0:
+            input_text = insert_dummy_tokens(input_text, before_dummy, after_dummy)
+        if use_alpaca:
+            prompt = format_alpaca_prompt(instruction, input_text)
+        else:
+            prompt = f"{instruction}\n\n{input_text}\n"
+        return prompt, output
+
     questions = _build_questions_block(queries)
 
     # Arrange query position relative to documents

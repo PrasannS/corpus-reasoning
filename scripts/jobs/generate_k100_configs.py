@@ -11,8 +11,8 @@ def std_config(dataset, query_position, after_dummy=0):
     ds_short = "nq" if dataset == "nq" else "hotpotqa"
     # NQ uses k60 (60 docs) to fit in 16k context; HotpotQA uses k100
     if dataset == "nq":
-        ds_prefix = "nq_train_k60_random"
-        k_tag = "k60"
+        ds_prefix = "nq_train_k40_random"
+        k_tag = "k40"
     else:
         ds_prefix = "hotpotqa_train_k100_shuffled_bridge"
         k_tag = "k100"
@@ -81,8 +81,8 @@ def chunked_config(dataset, query_position, after_dummy=0):
     """Chunked attention config template."""
     ds_short = "nq" if dataset == "nq" else "hotpotqa"
     if dataset == "nq":
-        ds_prefix = "nq_train_k60_random"
-        k_tag = "k60"
+        ds_prefix = "nq_train_k40_random"
+        k_tag = "k40"
     else:
         ds_prefix = "hotpotqa_train_k100_shuffled_bridge"
         k_tag = "k100"

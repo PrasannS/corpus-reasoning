@@ -1,22 +1,22 @@
 base_model: Qwen/Qwen3.5-0.8B-Base
 datasets:
-- path: data/hotpotqa_train_k10_shuffled_bridge_1000_alpaca_retrieval.jsonl
+- path: data/nq_train_k40_random_10000_alpaca_retrieval_qafter.jsonl
   type: alpaca
   ds_type: json
 val_set_size: 0.0
 dataset_prepared_path: /tmp/axolotl_cache
-output_dir: ./outputs/hotpotqa-k10-std-qboth-qwen-lora
+output_dir: ./outputs/nq-k40-std-qafter-qwen-lora
 wandb_project: corpus-reasoning
-wandb_name: std_qboth_hotpotqa_k10_1k_qwen_lora
+wandb_name: std_qafter_nq_k40_10k_qwen_lora
 task: retrieval
-query_position: both
+query_position: after
 standard_attention: true
 sequence_len: 16384
 dataset_processes: 64
 micro_batch_size: 1
 gradient_accumulation_steps: 4
 num_epochs: 1
-learning_rate: 5.0e-04
+learning_rate: 0.0005
 adapter: lora
 lora_r: 32
 lora_alpha: 64

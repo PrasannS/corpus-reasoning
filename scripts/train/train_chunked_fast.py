@@ -275,7 +275,16 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(cfg["base_model"])
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    doc_start_id, doc_end_id = setup_tokenizer(tokenizer)
+
+    standard_attention = cfg.get("standard_attention", False)
+
+    # Only add doc boundary tokens for chunked attention — standard attention
+    # doesn't need them, and resizing embeddings makes the LoRA adapter
+    # incompatible with vLLM (which can't load lm_head as a LoRA weight).
+    if standard_attention:
+        doc_start_id, doc_end_id = None, None
+    else:
+        doc_start_id, doc_end_id = setup_tokenizer(tokenizer)
 
     # Load model with SDPA
     print(f"Loading {cfg['base_model']} with attn_implementation=sdpa")
@@ -284,15 +293,17 @@ def main():
         attn_implementation="sdpa",
         torch_dtype=torch.bfloat16,
     )
-    model.resize_token_embeddings(len(tokenizer))
 
-    # Initialize the new <doc_start>/<doc_end> embeddings as the mean of all
-    # existing embeddings. This gives a reasonable starting point so the model
-    # doesn't start with random noise for these tokens.
-    with torch.no_grad():
-        mean_emb = model.get_input_embeddings().weight[:-2].mean(dim=0)
-        model.get_input_embeddings().weight[-2] = mean_emb
-        model.get_input_embeddings().weight[-1] = mean_emb
+    if not standard_attention:
+        model.resize_token_embeddings(len(tokenizer))
+
+        # Initialize the new <doc_start>/<doc_end> embeddings as the mean of all
+        # existing embeddings. This gives a reasonable starting point so the model
+        # doesn't start with random noise for these tokens.
+        with torch.no_grad():
+            mean_emb = model.get_input_embeddings().weight[:-2].mean(dim=0)
+            model.get_input_embeddings().weight[-2] = mean_emb
+            model.get_input_embeddings().weight[-1] = mean_emb
 
     if cfg.get("gradient_checkpointing", True):
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
@@ -328,7 +339,6 @@ def main():
 
     # Dataset
     query_position = cfg.get("query_position", "after")
-    standard_attention = cfg.get("standard_attention", False)
     train_on_inputs = cfg.get("train_on_inputs", False)
     task = cfg.get("task", "retrieval")
     use_titles = not cfg.get("no_titles", False)

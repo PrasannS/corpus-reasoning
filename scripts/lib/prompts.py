@@ -77,6 +77,19 @@ RETRIEVAL_INSTRUCTION_MULTI_QUERY = (
     "Relevant Documents: Q1: [id1], [id2]; Q2: [id3], [id4]; ..."
 )
 
+# ── Contradiction task instructions ──
+# Claims are formatted as numbered items; model identifies contradicting pairs.
+CONTRADICTION_INSTRUCTION = (
+    "Given the following corpus of numbered claims, identify all pairs of claims "
+    "that contradict each other. A pair of claims is contradictory if they cannot "
+    "both be true at the same time.\n\n"
+    "Output your answer as a JSON list of pairs, where each pair is a list of two "
+    "claim IDs. For example: [[1, 4], [3, 7]]\n"
+    "If there are no contradicting pairs, output: []"
+)
+
+CLAIM_TEMPLATE = "Claim {id}: {text}"
+
 # ── HELMET base-model eval templates (non-alpaca) ──
 # These are used when evaluating base models (no fine-tuning) with few-shot demos.
 # Trained models use the alpaca template from lib/io.py instead.

@@ -68,15 +68,17 @@ def wrap_documents(text: str) -> str:
     # wrap each document block with boundary tokens. Non-document text (e.g.
     # dummy tokens from ablation studies) is left unwrapped — the attention
     # mask will treat unwrapped tokens as "free" (visible to all).
+    # Claim-format lines (Claim N: ...) are separated by \n not \n\n.
     parts = doc_section.split("\n\n")
     wrapped = []
     for p in parts:
-        p = p.strip()
-        if p.startswith(("Document (", "Document [", "Document:")):
+        stripped = p.strip()
+        if stripped.startswith(("Document (", "Document [", "Document:")):
             # This is a document — wrap it so the mask can isolate it
-            wrapped.append(f"{DOC_START}{p}{DOC_END}")
-        elif p:
-            # Non-document text (dummy tokens, etc.) — leave as free tokens
+            wrapped.append(f"{DOC_START}{stripped}{DOC_END}")
+        elif stripped:
+            # Non-document text (claims, dummy tokens, alpaca markers, etc.)
+            # Preserve original whitespace to avoid stripping trailing newlines
             wrapped.append(p)
 
     # Step 3: Reassemble with the question(s) in their original positions

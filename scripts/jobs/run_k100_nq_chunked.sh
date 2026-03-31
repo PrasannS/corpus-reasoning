@@ -25,11 +25,11 @@ setup_env
 
 set -eo pipefail
 
-NQ_EVAL="data/nq_validation_k60_random_500.jsonl"
+NQ_EVAL="data/nq_validation_k40_random_500.jsonl"
 
 CONFIGS=(
-    "configs/nq_k60_chunked_qafter_qwen_lora.yml"
-    "configs/nq_k60_chunked_qboth_qwen_lora.yml"
+    "configs/nq_k40_chunked_qafter_qwen_lora.yml"
+    "configs/nq_k40_chunked_qboth_qwen_lora.yml"
 )
 QUERY_POSITIONS=("after" "both")
 AFTER_DUMMIES=(0 0)

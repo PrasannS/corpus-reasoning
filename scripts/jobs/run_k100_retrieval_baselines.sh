@@ -40,7 +40,7 @@ NQ_TRIPLETS="data/nq_train_triplets_neg40_400000.jsonl"
 
 # --- Eval data ---
 HPQA_EVAL="data/hotpotqa_eval_k100_shuffled_bridge_500.jsonl"
-NQ_EVAL="data/nq_validation_k60_random_500.jsonl"
+NQ_EVAL="data/nq_validation_k40_random_500.jsonl"
 
 echo "=============================================="
 echo "k100 Retrieval Baselines — DPR + ColBERT"
