@@ -48,6 +48,26 @@ RETRIEVAL_INSTRUCTION_MULTI_DOC = (
     "Write your answer in the following format:\nRelevant Documents: [id1], [id2]"
 )
 
+# CoT retrieval: single-doc (NQ) — reason about relevance, then output ID.
+COT_RETRIEVAL_INSTRUCTION_SINGLE = (
+    "Use the given documents to identify which document is most relevant to "
+    "answering the question. Think step by step about why the document is "
+    "relevant, then give your answer.\n"
+    "Write your answer in the following format:\n"
+    "[chain of thought reasoning]\n"
+    "Relevant Document: [id]"
+)
+
+# CoT retrieval: multi-doc (HotpotQA) — reason about relevance, then output IDs.
+COT_RETRIEVAL_INSTRUCTION_MULTI_DOC = (
+    "Use the given documents to identify which documents are relevant to "
+    "answering the question. Think step by step about why the documents are "
+    "relevant, then list all relevant document IDs.\n"
+    "Write your answer in the following format:\n"
+    "[chain of thought reasoning]\n"
+    "Relevant Documents: [id1], [id2]"
+)
+
 # Multi-query retrieval (multi-HotpotQA): per-query relevant document IDs.
 RETRIEVAL_INSTRUCTION_MULTI_QUERY = (
     "Use the given documents to identify which documents are relevant to "

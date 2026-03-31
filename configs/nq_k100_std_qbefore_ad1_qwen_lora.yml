@@ -1,0 +1,50 @@
+base_model: Qwen/Qwen3.5-0.8B-Base
+datasets:
+- path: data/nq_train_k100_random_10000_alpaca_retrieval_qbefore_ad1.jsonl
+  type: alpaca
+  ds_type: json
+val_set_size: 0.0
+dataset_prepared_path: /tmp/axolotl_cache
+output_dir: ./outputs/nq-k100-std-qbefore_ad1-qwen-lora
+wandb_project: corpus-reasoning
+wandb_name: std_qbefore_ad1_nq_k100_10k_qwen_lora
+task: retrieval
+query_position: before
+standard_attention: true
+sequence_len: 32768
+dataset_processes: 64
+micro_batch_size: 1
+gradient_accumulation_steps: 4
+num_epochs: 1
+learning_rate: 0.0005
+adapter: lora
+lora_r: 32
+lora_alpha: 64
+lora_dropout: 0.05
+lora_target_modules:
+- gate_proj
+- down_proj
+- up_proj
+- q_proj
+- v_proj
+- k_proj
+- o_proj
+sample_packing: false
+eval_sample_packing: false
+optimizer: adamw_8bit
+lr_scheduler: cosine
+bf16: auto
+tf32: true
+gradient_checkpointing: true
+flash_attention: true
+logging_steps: 1
+saves_per_epoch: 0
+save_strategy: 'no'
+evals_per_epoch: 0
+warmup_ratio: 0.1
+weight_decay: 0.0
+deepspeed: configs/deepspeed_zero2.json
+special_tokens:
+  pad_token: <|endoftext|>
+before_dummy: 0
+after_dummy: 1

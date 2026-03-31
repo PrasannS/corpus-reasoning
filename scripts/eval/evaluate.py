@@ -404,14 +404,18 @@ def parse_output(output, prefix="Answer:"):
 
 
 def parse_retrieval_output(output):
-    """Parse document IDs from model output, stripping thinking/prefixes."""
+    """Parse document IDs from model output, stripping thinking/prefixes.
+
+    Uses rfind (last occurrence) so that CoT reasoning preceding the final
+    'Relevant Document: [X]' line doesn't interfere with parsing.
+    """
     text = output.strip()
     after_think = extract_after_thinking(text)
     if after_think:
         text = after_think
     for prefix in ["Relevant Documents:", "Relevant Document:", "relevant documents:",
                    "relevant document:"]:
-        idx = text.find(prefix)
+        idx = text.rfind(prefix)
         if idx >= 0:
             text = text[idx + len(prefix):].strip()
             break
@@ -518,7 +522,8 @@ def main():
     parser.add_argument("--max-tokens", type=int, default=50)
 
     # Task and backend
-    parser.add_argument("--task", type=str, default="retrieval", choices=["qa", "retrieval"])
+    parser.add_argument("--task", type=str, default="retrieval",
+                        choices=["qa", "retrieval", "cot_retrieval"])
     parser.add_argument("--backend", type=str, default="vllm",
                         choices=["vllm", "chunked-sdpa", "chunked-flex", "standard"],
                         help="Inference backend")
@@ -566,6 +571,10 @@ def main():
         print(f"  Auto-setting shots=0 for trained model (training data has no demos)")
         args.shots = 0
 
+    if args.task == "cot_retrieval" and args.max_tokens <= 50:
+        args.max_tokens = 512
+        print(f"  CoT retrieval: increased max_tokens to {args.max_tokens}")
+
     if args.enable_thinking and args.max_tokens <= 50:
         args.max_tokens = 512
         print(f"  Thinking mode: increased max_tokens to {args.max_tokens}")
@@ -578,7 +587,8 @@ def main():
         model, tokenizer, doc_start_id, doc_end_id = load_hf_model(args)
         device = next(model.parameters()).device
         newline_id = tokenizer.encode("\n", add_special_tokens=False)
-        if args.enable_thinking:
+        multiline_output = args.enable_thinking or args.task == "cot_retrieval"
+        if multiline_output:
             stop_ids = {tokenizer.eos_token_id}
         else:
             stop_ids = {tokenizer.eos_token_id} | set(newline_id)
@@ -586,7 +596,8 @@ def main():
         _import_vllm()
         from lib.vllm_utils import load_model as vllm_load_model, run_inference
         llm, lora_request = vllm_load_model(args)
-        if args.enable_thinking:
+        multiline_output = args.enable_thinking or args.task == "cot_retrieval"
+        if multiline_output:
             sampling_params = SamplingParams(temperature=0.0, max_tokens=args.max_tokens)
         else:
             sampling_params = SamplingParams(temperature=0.0, max_tokens=args.max_tokens, stop=["\n"])
@@ -647,7 +658,7 @@ def main():
             responses = run_inference(llm, prompts, sampling_params, lora_request)
 
         # --- Compute metrics ---
-        if args.task == "retrieval":
+        if args.task in ("retrieval", "cot_retrieval"):
             results, details = _eval_retrieval(examples, responses)
         else:
             results, details = _eval_qa(examples, responses)
